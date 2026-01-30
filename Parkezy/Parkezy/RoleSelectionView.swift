@@ -125,11 +125,149 @@ struct RoleSelectionView: View {
     private var destinationView: some View {
         switch selectedRole {
         case .driver:
-            HomeMapView()
+            UnifiedMapView()
                 .navigationBarBackButtonHidden(false)
         case .host:
-            HostDashboardView()
+            HostTypeSelectionView()
                 .navigationBarBackButtonHidden(false)
+        }
+    }
+}
+
+// MARK: - Host Type Selection View
+
+struct HostTypeSelectionView: View {
+    @EnvironmentObject var hostViewModel: HostViewModel
+    @EnvironmentObject var privateViewModel: PrivateParkingViewModel
+    
+    @State private var selectedHostType: HostType = .private
+    @State private var navigateToDashboard = false
+    
+    enum HostType {
+        case commercial
+        case privateParking
+    }
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [.orange.opacity(0.8), .pink.opacity(0.6)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+            
+            VStack(spacing: DesignSystem.Spacing.xl) {
+                Text("What type of parking\ndo you manage?")
+                    .font(.title.bold())
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, DesignSystem.Spacing.xxl)
+                
+                Spacer()
+                
+                VStack(spacing: DesignSystem.Spacing.l) {
+                    HostTypeCard(
+                        icon: "building.2.fill",
+                        title: "Commercial",
+                        subtitle: "Mall, Office, Hospital, Airport",
+                        isSelected: selectedHostType == .commercial
+                    ) {
+                        withAnimation(.spring()) {
+                            selectedHostType = .commercial
+                        }
+                    }
+                    
+                    HostTypeCard(
+                        icon: "house.fill",
+                        title: "Private",
+                        subtitle: "Home driveway, Garage",
+                        isSelected: selectedHostType == .privateParking
+                    ) {
+                        withAnimation(.spring()) {
+                            selectedHostType = .privateParking
+                        }
+                    }
+                }
+                .padding(.horizontal, DesignSystem.Spacing.l)
+                
+                Spacer()
+                
+                Button {
+                    navigateToDashboard = true
+                } label: {
+                    HStack {
+                        Text("Continue")
+                            .font(.headline)
+                        Image(systemName: "arrow.right")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.white)
+                    .foregroundColor(.orange)
+                    .cornerRadius(DesignSystem.Spacing.m)
+                }
+                .padding(.horizontal, DesignSystem.Spacing.l)
+                .padding(.bottom, DesignSystem.Spacing.l)
+            }
+        }
+        .navigationDestination(isPresented: $navigateToDashboard) {
+            switch selectedHostType {
+            case .commercial:
+                HostDashboardView() // Can be replaced with CommercialHostDashboard later
+            case .privateParking:
+                PrivateHostDashboardView()
+            }
+        }
+        .navigationTitle("Host Type")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Host Type Card
+
+struct HostTypeCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let isSelected: Bool
+    let onTap: () -> Void
+    
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: DesignSystem.Spacing.m) {
+                Image(systemName: icon)
+                    .font(.title)
+                    .foregroundColor(isSelected ? .white : .orange)
+                    .frame(width: 50, height: 50)
+                    .background(isSelected ? Color.orange : Color.orange.opacity(0.2))
+                    .cornerRadius(12)
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.orange)
+                        .font(.title2)
+                }
+            }
+            .padding(DesignSystem.Spacing.m)
+            .background(Color.white)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? Color.orange : Color.clear, lineWidth: 3)
+            )
+            .shadow(color: .black.opacity(0.05), radius: 5)
         }
     }
 }

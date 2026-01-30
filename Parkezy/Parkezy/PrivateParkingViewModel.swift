@@ -1,0 +1,467 @@
+//
+//  PrivateParkingViewModel.swift
+//  ParkEzy
+//
+//  ViewModel for Private Parking - SEPARATE from Commercial Parking
+//  Manages private listings, slots, bookings, and pricing intelligence
+//
+
+import SwiftUI
+import CoreLocation
+import Combine
+
+@MainActor
+class PrivateParkingViewModel: ObservableObject {
+    // MARK: - Published Properties
+    
+    /// All private listings
+    @Published var listings: [PrivateParkingListing] = []
+    
+    /// Currently selected listing (for detail view)
+    @Published var selectedListing: PrivateParkingListing?
+    
+    /// All private bookings
+    @Published var bookings: [PrivateBooking] = []
+    
+    /// Pending approval requests (for host)
+    @Published var pendingApprovals: [PrivateBooking] = []
+    
+    /// Active bookings
+    @Published var activeBookings: [PrivateBooking] = []
+    
+    /// Current host's listings (when in host mode)
+    @Published var myListings: [PrivateParkingListing] = []
+    
+    /// Filters
+    @Published var filterMinPrice: Double?
+    @Published var filterMaxPrice: Double?
+    @Published var filterHasEV: Bool = false
+    @Published var filterIsCovered: Bool = false
+    
+    // Timer for countdown updates
+    private var countdownTimer: Timer?
+    
+    // MARK: - Initialization
+    
+    init() {
+        generateMockListings()
+        generateMockBookings()
+        calculateSuggestedPrices()
+        startCountdownTimer()
+    }
+    
+    deinit {
+        countdownTimer?.invalidate()
+    }
+    
+    // MARK: - Countdown Timer
+    
+    private func startCountdownTimer() {
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.objectWillChange.send()
+            }
+        }
+    }
+    
+    // MARK: - Mock Data Generation
+    
+    private func generateMockListings() {
+        let ownerID = UUID() // Current host
+        
+        listings = [
+            // GK-1 area listings
+            createListing(
+                title: "Covered Driveway in GK-1",
+                address: "M-45, Greater Kailash 1",
+                lat: 28.5494, lon: 77.2344,
+                slots: 2, hourly: 45, daily: 350, monthly: 3200,
+                isCovered: true, hasEV: false, ownerID: ownerID, ownerName: "Priya Sharma"
+            ),
+            createListing(
+                title: "Secure Garage Parking",
+                address: "C-12, Greater Kailash 2",
+                lat: 28.5398, lon: 77.2420,
+                slots: 1, hourly: 55, daily: 400, monthly: 3800,
+                isCovered: true, hasEV: true, ownerID: ownerID, ownerName: "Rahul Mehta"
+            ),
+            
+            // Defence Colony
+            createListing(
+                title: "Open Driveway Space",
+                address: "A-23, Defence Colony",
+                lat: 28.5742, lon: 77.2310,
+                slots: 3, hourly: 35, daily: 280, monthly: 2800,
+                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Amit Singh"
+            ),
+            createListing(
+                title: "Premium Basement Parking",
+                address: "B-Block, Defence Colony",
+                lat: 28.5720, lon: 77.2335,
+                slots: 2, hourly: 60, daily: 450, monthly: 4200,
+                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Neha Gupta"
+            ),
+            
+            // Hauz Khas
+            createListing(
+                title: "Artist Colony Parking",
+                address: "Hauz Khas Village",
+                lat: 28.5494, lon: 77.2001,
+                slots: 1, hourly: 40, daily: 300, monthly: 3000,
+                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Vikram Bhatia"
+            ),
+            
+            // Vasant Vihar
+            createListing(
+                title: "Secure Home Parking",
+                address: "C-45, Vasant Vihar",
+                lat: 28.5612, lon: 77.1598,
+                slots: 2, hourly: 50, daily: 380, monthly: 3600,
+                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Sunita Kapoor"
+            ),
+            
+            // Green Park
+            createListing(
+                title: "Convenient Street Parking",
+                address: "Green Park Extension",
+                lat: 28.5598, lon: 77.2089,
+                slots: 2, hourly: 30, daily: 250, monthly: 2500,
+                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Rajesh Kumar"
+            ),
+            
+            // Lajpat Nagar
+            createListing(
+                title: "Market Area Parking",
+                address: "Lajpat Nagar II",
+                lat: 28.5680, lon: 77.2408,
+                slots: 4, hourly: 35, daily: 270, monthly: 2700,
+                isCovered: true, hasEV: false, ownerID: UUID(), ownerName: "Pooja Verma"
+            ),
+            
+            // Noida
+            createListing(
+                title: "Society Visitor Parking",
+                address: "Sector 62, Noida",
+                lat: 28.6273, lon: 77.3649,
+                slots: 3, hourly: 25, daily: 200, monthly: 2000,
+                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Arun Joshi"
+            ),
+            
+            // Gurugram
+            createListing(
+                title: "Luxury Villa Parking",
+                address: "DLF Phase 4, Gurugram",
+                lat: 28.4650, lon: 77.0920,
+                slots: 3, hourly: 70, daily: 500, monthly: 5000,
+                isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Kavita Malhotra"
+            ),
+            createListing(
+                title: "Budget Friendly Spot",
+                address: "Sushant Lok, Gurugram",
+                lat: 28.4698, lon: 77.0715,
+                slots: 1, hourly: 30, daily: 220, monthly: 2200,
+                isCovered: false, hasEV: false, ownerID: UUID(), ownerName: "Deepak Arora"
+            )
+        ]
+        
+        // Set first 3 as "my listings" for host demo
+        myListings = Array(listings.prefix(3))
+    }
+    
+    private func createListing(
+        title: String, address: String, lat: Double, lon: Double,
+        slots: Int, hourly: Double, daily: Double, monthly: Double,
+        isCovered: Bool, hasEV: Bool, ownerID: UUID, ownerName: String
+    ) -> PrivateParkingListing {
+        PrivateParkingListing(
+            id: UUID(),
+            ownerID: ownerID,
+            ownerName: ownerName,
+            title: title,
+            address: address,
+            coordinates: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+            listingDescription: "A convenient parking spot in a safe residential area. Easy access and secure location.",
+            slots: generatePrivateSlots(count: slots),
+            hourlyRate: hourly,
+            dailyRate: daily,
+            monthlyRate: monthly,
+            flatFullBookingRate: hourly * Double(slots) * 8,
+            autoAcceptBookings: Bool.random(),
+            instantBookingDiscount: Bool.random() ? 10 : nil,
+            hasCCTV: Bool.random(),
+            isCovered: isCovered,
+            hasEVCharging: hasEV,
+            hasSecurityGuard: Bool.random(),
+            hasWaterAccess: Bool.random(),
+            is24Hours: true,
+            availableFrom: nil,
+            availableTo: nil,
+            availableDays: [1, 2, 3, 4, 5, 6, 7],
+            rating: Double.random(in: 3.8...4.9),
+            reviewCount: Int.random(in: 10...150),
+            imageURLs: [],
+            suggestedHourlyRate: nil
+        )
+    }
+    
+    private func generatePrivateSlots(count: Int) -> [PrivateParkingSlot] {
+        let labels = ["Garage", "Driveway Left", "Driveway Right", "Front Yard"]
+        var slots: [PrivateParkingSlot] = []
+        
+        for i in 1...count {
+            let isOccupied = Double.random(in: 0...1) < 0.3
+            let endTime: Date? = isOccupied ? Date().addingTimeInterval(Double.random(in: 1800...28800)) : nil
+            
+            slots.append(PrivateParkingSlot(
+                id: UUID(),
+                slotNumber: i,
+                slotLabel: count > 1 ? labels[min(i - 1, labels.count - 1)] : nil,
+                vehicleSize: [.compact, .standard, .large].randomElement()!,
+                canFitSUV: i <= 2,
+                canFitBike: true,
+                isOccupied: isOccupied,
+                isDisabled: false,
+                currentBookingID: isOccupied ? UUID() : nil,
+                bookingEndTime: endTime
+            ))
+        }
+        return slots
+    }
+    
+    private func generateMockBookings() {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Generate bookings for listings
+        for listing in listings {
+            // Completed bookings
+            for _ in 0..<Int.random(in: 3...10) {
+                guard let slot = listing.slots.randomElement() else { continue }
+                let daysAgo = Int.random(in: 1...30)
+                let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now)!
+                let durationType: PrivateBookingDuration = [.hourly, .daily].randomElement()!
+                let duration = durationType == .hourly ? Double.random(in: 2...8) : 24
+                let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime)!
+                let rate = durationType == .hourly ? listing.hourlyRate : listing.dailyRate
+                
+                let booking = PrivateBooking(
+                    id: UUID(),
+                    listingID: listing.id,
+                    slotID: slot.id,
+                    driverID: UUID(),
+                    hostID: listing.ownerID,
+                    driverName: ["Rohit", "Sneha", "Arjun", "Meera", "Karan"].randomElement()!,
+                    driverPhone: "+91 98765 \(Int.random(in: 10000...99999))",
+                    vehicleNumber: "DL \(Int.random(in: 1...14)) \(["A", "B", "C", "S"].randomElement()!) \(Int.random(in: 1000...9999))",
+                    requestTime: startTime.addingTimeInterval(-7200),
+                    scheduledStartTime: startTime,
+                    scheduledEndTime: endTime,
+                    actualStartTime: startTime,
+                    actualEndTime: endTime,
+                    durationType: durationType,
+                    agreedRate: rate,
+                    estimatedCost: rate * (durationType == .hourly ? duration : 1),
+                    actualCost: rate * (durationType == .hourly ? duration : 1),
+                    hostEarnings: rate * (durationType == .hourly ? duration : 1) * 0.85,
+                    status: .completed,
+                    approvalTime: startTime.addingTimeInterval(-3600),
+                    rejectionReason: nil,
+                    accessPIN: String(format: "%06d", Int.random(in: 100000...999999)),
+                    driverMessage: nil,
+                    hostMessage: nil
+                )
+                bookings.append(booking)
+            }
+        }
+        
+        // Add some pending approvals for host demo
+        for i in 0..<3 {
+            let listing = myListings[i % myListings.count]
+            guard let slot = listing.slots.first(where: { !$0.isOccupied }) else { continue }
+            
+            let booking = PrivateBooking(
+                id: UUID(),
+                listingID: listing.id,
+                slotID: slot.id,
+                driverID: UUID(),
+                hostID: listing.ownerID,
+                driverName: ["Aarav Sharma", "Diya Patel", "Vihaan Kapoor"][i],
+                driverPhone: "+91 99887 \(Int.random(in: 10000...99999))",
+                vehicleNumber: "DL \(Int.random(in: 1...14)) S \(Int.random(in: 1000...9999))",
+                requestTime: Date().addingTimeInterval(-Double.random(in: 300...3600)),
+                scheduledStartTime: Date().addingTimeInterval(Double.random(in: 1800...7200)),
+                scheduledEndTime: Date().addingTimeInterval(Double.random(in: 14400...28800)),
+                actualStartTime: nil,
+                actualEndTime: nil,
+                durationType: .hourly,
+                agreedRate: listing.hourlyRate,
+                estimatedCost: listing.hourlyRate * Double.random(in: 2...6),
+                actualCost: nil,
+                hostEarnings: nil,
+                status: .pendingApproval,
+                approvalTime: nil,
+                rejectionReason: nil,
+                accessPIN: nil,
+                driverMessage: ["Need parking for meeting", "Shopping trip", nil][i],
+                hostMessage: nil
+            )
+            pendingApprovals.append(booking)
+            bookings.append(booking)
+        }
+        
+        activeBookings = bookings.filter { $0.status == .active }
+    }
+    
+    // MARK: - Pricing Intelligence
+    
+    /// Calculate suggested prices based on nearby listings
+    func calculateSuggestedPrices() {
+        for i in 0..<listings.count {
+            // Find nearby listings (within 2km)
+            let nearbyListings = listings.filter { other in
+                other.id != listings[i].id &&
+                distance(from: listings[i].coordinates, to: other.coordinates) < 2000
+            }
+            
+            guard !nearbyListings.isEmpty else {
+                listings[i].suggestedHourlyRate = 40 // Default
+                continue
+            }
+            
+            // Calculate average
+            let avgPrice = nearbyListings.reduce(0.0) { $0 + $1.hourlyRate } / Double(nearbyListings.count)
+            listings[i].suggestedHourlyRate = round(avgPrice * 10) / 10
+        }
+    }
+    
+    private func distance(from: CLLocationCoordinate2D, to: CLLocationCoordinate2D) -> Double {
+        let fromLocation = CLLocation(latitude: from.latitude, longitude: from.longitude)
+        let toLocation = CLLocation(latitude: to.latitude, longitude: to.longitude)
+        return fromLocation.distance(from: toLocation)
+    }
+    
+    // MARK: - Booking Methods
+    
+    /// Request a booking (may require approval)
+    func requestBooking(listingID: UUID, slotID: UUID, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String? = nil) -> PrivateBooking? {
+        guard let listingIndex = listings.firstIndex(where: { $0.id == listingID }),
+              let slotIndex = listings[listingIndex].slots.firstIndex(where: { $0.id == slotID }) else {
+            return nil
+        }
+        
+        let listing = listings[listingIndex]
+        let slot = listing.slots[slotIndex]
+        
+        guard !slot.isOccupied && !slot.isDisabled else { return nil }
+        
+        let rate: Double
+        switch durationType {
+        case .hourly: rate = listing.hourlyRate
+        case .daily: rate = listing.dailyRate
+        case .monthly: rate = listing.monthlyRate
+        }
+        
+        let duration = endTime.timeIntervalSince(startTime) / 3600
+        let cost = durationType == .hourly ? rate * duration : rate
+        
+        let booking = PrivateBooking(
+            id: UUID(),
+            listingID: listingID,
+            slotID: slotID,
+            driverID: UUID(),
+            hostID: listing.ownerID,
+            driverName: "Current User", // Would come from auth
+            driverPhone: "+91 98765 43210",
+            vehicleNumber: nil,
+            requestTime: Date(),
+            scheduledStartTime: startTime,
+            scheduledEndTime: endTime,
+            actualStartTime: nil,
+            actualEndTime: nil,
+            durationType: durationType,
+            agreedRate: rate,
+            estimatedCost: cost,
+            actualCost: nil,
+            hostEarnings: nil,
+            status: listing.autoAcceptBookings ? .approved : .pendingApproval,
+            approvalTime: listing.autoAcceptBookings ? Date() : nil,
+            rejectionReason: nil,
+            accessPIN: listing.autoAcceptBookings ? String(format: "%06d", Int.random(in: 100000...999999)) : nil,
+            driverMessage: driverMessage,
+            hostMessage: nil
+        )
+        
+        bookings.append(booking)
+        
+        if listing.autoAcceptBookings {
+            // Update slot immediately
+            listings[listingIndex].slots[slotIndex].isOccupied = true
+            listings[listingIndex].slots[slotIndex].currentBookingID = booking.id
+            listings[listingIndex].slots[slotIndex].bookingEndTime = endTime
+        } else {
+            pendingApprovals.append(booking)
+        }
+        
+        return booking
+    }
+    
+    /// Approve a pending booking (host action)
+    func approveBooking(_ bookingID: UUID) {
+        guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
+        
+        bookings[index].status = .approved
+        bookings[index].approvalTime = Date()
+        bookings[index].accessPIN = String(format: "%06d", Int.random(in: 100000...999999))
+        
+        // Update slot
+        if let listingIndex = listings.firstIndex(where: { $0.id == bookings[index].listingID }),
+           let slotIndex = listings[listingIndex].slots.firstIndex(where: { $0.id == bookings[index].slotID }) {
+            listings[listingIndex].slots[slotIndex].isOccupied = true
+            listings[listingIndex].slots[slotIndex].currentBookingID = bookingID
+            listings[listingIndex].slots[slotIndex].bookingEndTime = bookings[index].scheduledEndTime
+        }
+        
+        pendingApprovals.removeAll { $0.id == bookingID }
+    }
+    
+    /// Reject a pending booking (host action)
+    func rejectBooking(_ bookingID: UUID, reason: String?) {
+        guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
+        
+        bookings[index].status = .rejected
+        bookings[index].rejectionReason = reason
+        
+        pendingApprovals.removeAll { $0.id == bookingID }
+    }
+    
+    // MARK: - Computed Properties
+    
+    var filteredListings: [PrivateParkingListing] {
+        listings.filter { listing in
+            if let min = filterMinPrice, listing.hourlyRate < min {
+                return false
+            }
+            if let max = filterMaxPrice, listing.hourlyRate > max {
+                return false
+            }
+            if filterHasEV && !listing.hasEVCharging {
+                return false
+            }
+            if filterIsCovered && !listing.isCovered {
+                return false
+            }
+            return listing.availableSlots > 0
+        }
+    }
+    
+    func totalEarnings(for ownerID: UUID) -> Double {
+        bookings
+            .filter { $0.hostID == ownerID && $0.status == .completed }
+            .compactMap { $0.hostEarnings }
+            .reduce(0, +)
+    }
+    
+    func pendingApprovalsCount(for ownerID: UUID) -> Int {
+        pendingApprovals.filter { $0.hostID == ownerID }.count
+    }
+}

@@ -9,9 +9,14 @@ import SwiftUI
 
 @main
 struct ParkezyApp: App {
+    // Legacy ViewModels (for existing views)
     @StateObject private var mapViewModel = MapViewModel()
     @StateObject private var bookingViewModel = BookingViewModel()
     @StateObject private var hostViewModel = HostViewModel()
+    
+    // New separated ViewModels
+    @StateObject private var commercialViewModel = CommercialParkingViewModel()
+    @StateObject private var privateViewModel = PrivateParkingViewModel()
     
     var body: some Scene {
         WindowGroup {
@@ -19,6 +24,8 @@ struct ParkezyApp: App {
                 .environmentObject(mapViewModel)
                 .environmentObject(bookingViewModel)
                 .environmentObject(hostViewModel)
+                .environmentObject(commercialViewModel)
+                .environmentObject(privateViewModel)
         }
     }
 }
