@@ -142,13 +142,45 @@ struct PrivateHostDashboardView: View {
     
     private var recentActivitySection: some View {
         VStack(alignment: .leading, spacing: DesignSystem.Spacing.m) {
-            Text("Recent Activity")
-                .font(.headline)
+            HStack {
+                Text("Recent Activity")
+                    .font(.headline)
+                
+                Spacer()
+                
+                Text("\(recentBookings.count)")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(DesignSystem.Colors.primary)
+                    .cornerRadius(10)
+            }
             
-            ForEach(viewModel.bookings.filter { $0.status == .completed }.prefix(5)) { booking in
-                ActivityRow(booking: booking, listingName: viewModel.listings.first { $0.id == booking.listingID }?.title ?? "Unknown")
+            if recentBookings.isEmpty {
+                Text("No recent activity")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, DesignSystem.Spacing.l)
+            } else {
+                ForEach(recentBookings) { booking in
+                    ActivityRow(
+                        booking: booking,
+                        listingName: viewModel.listings.first { $0.id == booking.listingID }?.title ?? "Unknown"
+                    )
+                }
             }
         }
+    }
+    
+    // Computed property for recent bookings
+    private var recentBookings: [PrivateBooking] {
+        viewModel.bookings
+            .filter { $0.status == .approved || $0.status == .active || $0.status == .completed }
+            .sorted { $0.approvalTime ?? $0.requestTime > $1.approvalTime ?? $1.requestTime }
+            .prefix(5)
+            .map { $0 }
     }
 }
 
@@ -351,19 +383,26 @@ struct ActivityRow: View {
     var body: some View {
         HStack {
             Circle()
-                .fill(Color.green.opacity(0.2))
+                .fill(booking.status.color.opacity(0.2))
                 .frame(width: 40, height: 40)
                 .overlay(
-                    Image(systemName: "checkmark")
-                        .foregroundColor(.green)
+                    Image(systemName: booking.status.icon)
+                        .foregroundColor(booking.status.color)
                 )
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(booking.driverName)
                     .font(.subheadline.bold())
-                Text(listingName)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack(spacing: 4) {
+                    Text(listingName)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Text("•")
+                        .foregroundColor(.secondary)
+                    Text(booking.status.rawValue)
+                        .font(.caption.bold())
+                        .foregroundColor(booking.status.color)
+                }
             }
             
             Spacer()
@@ -378,6 +417,8 @@ struct ActivityRow: View {
             }
         }
         .padding(DesignSystem.Spacing.s)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(8)
     }
 }
 

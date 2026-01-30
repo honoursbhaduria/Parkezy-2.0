@@ -136,10 +136,9 @@ struct PricingIntelligenceView: View {
             Divider()
             
             // Comparison chart
-            HStack(spacing: DesignSystem.Spacing.m) {
-                comparisonBar(label: "You", value: currentHourlyRate, color: DesignSystem.Colors.primary)
-                comparisonBar(label: "Area Avg", value: listing.suggestedHourlyRate ?? 40, color: .blue)
-                comparisonBar(label: "Premium", value: (listing.suggestedHourlyRate ?? 40) * 1.3, color: .orange)
+            HStack(spacing: DesignSystem.Spacing.xl) {
+                comparisonBar(label: "You", value: currentHourlyRate, color: .green)
+                comparisonBar(label: "Area Avg", value: listing.suggestedHourlyRate ?? 40, color: .orange)
             }
         }
         .padding(.vertical, DesignSystem.Spacing.s)
