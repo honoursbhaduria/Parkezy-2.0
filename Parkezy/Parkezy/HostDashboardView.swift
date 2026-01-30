@@ -16,6 +16,7 @@ struct HostDashboardView: View {
     // MARK: - State
     
     @State private var showQRScanner = false
+    @State private var showSettings = false
     @State private var selectedTimeRange: TimeRange = .week
     @State private var animateCharts = false
     
@@ -69,6 +70,9 @@ struct HostDashboardView: View {
         }
         .sheet(isPresented: $showQRScanner) {
             QRScannerView(isPresented: $showQRScanner)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
         }
         .onAppear {
             withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
@@ -167,7 +171,7 @@ struct HostDashboardView: View {
             }
             
             QuickHostAction(icon: "gearshape.fill", title: "Settings") {
-                // Navigate to settings
+                showSettings = true
             }
         }
     }
@@ -257,6 +261,10 @@ struct HostDashboardView: View {
         .background(Color(.systemBackground))
         .cornerRadius(DesignSystem.Spacing.m)
         .shadow(color: .black.opacity(0.05), radius: 10, x: 0, y: 5)
+        // IMPORTANT: This onChange is required to update chart when picker changes
+        .onChange(of: selectedTimeRange) { _, newRange in
+            hostViewModel.updateRevenueData(for: newRange)
+        }
     }
     
     // MARK: - Peak Hours Chart

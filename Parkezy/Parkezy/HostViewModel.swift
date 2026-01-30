@@ -75,8 +75,8 @@ class HostViewModel: ObservableObject {
             totalBookings: 456
         )
         
-        // Load owned spots from MockDataService
-        ownedSpots = Array(MockDataService.shared.parkingSpots.prefix(3))
+        // Load owned spots from MockDataService (8 spots for this host)
+        ownedSpots = Array(MockDataService.shared.parkingSpots.prefix(8))
         
         // Generate mock active bookings
         generateMockBookings()
@@ -90,35 +90,11 @@ class HostViewModel: ObservableObject {
         let calendar = Calendar.current
         let now = Date()
         
-        // 2 Active bookings
-        for i in 0..<2 {
+        // 6 Active bookings (currently parked)
+        for i in 0..<6 {
             let spot = ownedSpots[i % ownedSpots.count]
-            let startTime = calendar.date(byAdding: .hour, value: -1, to: now)!
-            let endTime = calendar.date(byAdding: .hour, value: 1, to: now)!
-            
-            let booking = BookingSession(
-                id: UUID(),
-                spotID: spot.id,
-                userID: currentHost?.id ?? UUID(),
-                bookingTime: startTime,
-                scheduledStartTime: startTime,
-                actualStartTime: startTime,
-                scheduledEndTime: endTime,
-                actualEndTime: nil,
-                duration: 2.0,
-                totalCost: spot.pricePerHour * 2 * 1.18, // Including GST
-                status: .active,
-                accessCode: String(format: "%06d", Int.random(in: 100000...999999))
-            )
-            
-            activeBookings.append(booking)
-        }
-        
-        // 20 Completed bookings for history
-        for _ in 0..<20 {
-            let spot = ownedSpots.randomElement()!
-            let daysAgo = Int.random(in: 0...6)
-            let startTime = calendar.date(byAdding: .day, value: -daysAgo, to: now)!
+            let hoursAgo = Double.random(in: 0.5...3.0)
+            let startTime = calendar.date(byAdding: .minute, value: -Int(hoursAgo * 60), to: now)!
             let duration = Double.random(in: 1.0...4.0)
             let endTime = calendar.date(byAdding: .hour, value: Int(duration), to: startTime)!
             
@@ -126,7 +102,37 @@ class HostViewModel: ObservableObject {
                 id: UUID(),
                 spotID: spot.id,
                 userID: UUID(),
-                bookingTime: startTime,
+                bookingTime: calendar.date(byAdding: .hour, value: -1, to: startTime)!,
+                scheduledStartTime: startTime,
+                actualStartTime: startTime,
+                scheduledEndTime: endTime,
+                actualEndTime: nil,
+                duration: duration,
+                totalCost: spot.pricePerHour * duration * 1.18, // Including GST
+                status: .active,
+                accessCode: String(format: "%06d", Int.random(in: 100000...999999))
+            )
+            
+            activeBookings.append(booking)
+        }
+        
+        // 75 Completed bookings for history (spread across last 30 days)
+        for i in 0..<75 {
+            let spot = ownedSpots[i % ownedSpots.count]
+            let daysAgo = Int.random(in: 0...30)
+            let hour = Int.random(in: 8...20)
+            var components = calendar.dateComponents([.year, .month, .day], from: calendar.date(byAdding: .day, value: -daysAgo, to: now)!)
+            components.hour = hour
+            components.minute = Int.random(in: 0...59)
+            let startTime = calendar.date(from: components) ?? now
+            let duration = Double.random(in: 0.5...6.0)
+            let endTime = calendar.date(byAdding: .minute, value: Int(duration * 60), to: startTime)!
+            
+            let booking = BookingSession(
+                id: UUID(),
+                spotID: spot.id,
+                userID: UUID(),
+                bookingTime: calendar.date(byAdding: .hour, value: -2, to: startTime)!,
                 scheduledStartTime: startTime,
                 actualStartTime: startTime,
                 scheduledEndTime: endTime,
@@ -324,6 +330,38 @@ class HostViewModel: ObservableObject {
     }
     
     // MARK: - Refresh Data
+    
+    /// Update revenue data based on selected time range
+    func updateRevenueData(for range: TimeRange) {
+        let calendar = Calendar.current
+        let today = Date()
+        
+        switch range {
+        case .week:
+            // Show last 7 days
+            revenueData = (0..<7).reversed().map { daysAgo in
+                let date = calendar.date(byAdding: .day, value: -daysAgo, to: today)!
+                let amount = Double.random(in: 50...300)
+                return RevenueData(date: date, amount: amount)
+            }
+            
+        case .month:
+            // Show last 4 weeks (aggregated by week)
+            revenueData = (0..<4).reversed().map { weeksAgo in
+                let date = calendar.date(byAdding: .weekOfYear, value: -weeksAgo, to: today)!
+                let amount = Double.random(in: 500...2000)
+                return RevenueData(date: date, amount: amount)
+            }
+            
+        case .year:
+            // Show last 12 months
+            revenueData = (0..<12).reversed().map { monthsAgo in
+                let date = calendar.date(byAdding: .month, value: -monthsAgo, to: today)!
+                let amount = Double.random(in: 2000...10000)
+                return RevenueData(date: date, amount: amount)
+            }
+        }
+    }
     
     /// Refresh all dashboard data
     func refreshDashboard() {

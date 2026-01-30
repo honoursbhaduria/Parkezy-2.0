@@ -39,8 +39,9 @@ class LocationManager: NSObject, ObservableObject {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = 10 // Update every 10 meters
-        locationManager.allowsBackgroundLocationUpdates = true
-        locationManager.pausesLocationUpdatesAutomatically = false
+        // Background location updates require UIBackgroundModes capability in Info.plist
+        // Disable for now since the app functions primarily in the foreground
+        locationManager.pausesLocationUpdatesAutomatically = true
     }
     
     // MARK: - Public Methods
