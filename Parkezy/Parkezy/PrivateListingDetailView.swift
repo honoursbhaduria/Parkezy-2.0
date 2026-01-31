@@ -18,8 +18,22 @@ struct PrivateListingDetailView: View {
     @State private var startDate = Date()
     @State private var message = ""
     @State private var isBooking = false
+    @State private var bookingSuccess = false
+    @State private var bookingRequestID: UUID?
     
     var body: some View {
+        Group {
+            if bookingSuccess {
+                bookingSuccessView
+            } else {
+                listingContentView
+            }
+        }
+        .navigationTitle(bookingSuccess ? "Booking Confirmed" : "Listing Details")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private var listingContentView: some View {
         ScrollView {
             VStack(spacing: 0) {
                 // MARK: - Header Image Placeholder
@@ -49,8 +63,118 @@ struct PrivateListingDetailView: View {
                 descriptionSection
             }
         }
-        .navigationTitle("Listing Details")
-        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private var bookingSuccessView: some View {
+        VStack(spacing: DesignSystem.Spacing.xl) {
+            Spacer()
+            
+            // Success Icon
+            ZStack {
+                Circle()
+                    .fill(listing.autoAcceptBookings ? DesignSystem.Colors.success.opacity(0.1) : DesignSystem.Colors.primary.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: listing.autoAcceptBookings ? "checkmark.circle.fill" : "clock.badge.checkmark.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(listing.autoAcceptBookings ? DesignSystem.Colors.success : DesignSystem.Colors.primary)
+            }
+            
+            Text(listing.autoAcceptBookings ? "Booking Confirmed!" : "Request Sent!")
+                .font(.title.bold())
+            
+            Text(listing.autoAcceptBookings ? "Your parking spot is reserved" : "Waiting for host approval")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            // Booking Details Card
+            VStack(spacing: DesignSystem.Spacing.m) {
+                HStack {
+                    Text("Location")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(listing.title)
+                        .fontWeight(.medium)
+                        .multilineTextAlignment(.trailing)
+                }
+                
+                Divider()
+                
+                if let slot = selectedSlot {
+                    HStack {
+                        Text("Slot")
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Text(slot.displayName)
+                            .fontWeight(.medium)
+                    }
+                    
+                    Divider()
+                }
+                
+                HStack {
+                    Text("Duration")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(String(format: "%.1f", hourlyDuration)) hours")
+                        .fontWeight(.medium)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("Start Time")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(startDate, style: .time)
+                        .fontWeight(.medium)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("Total Cost")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("₹\(Int(totalCost))")
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignSystem.Colors.primary)
+                }
+            }
+            .padding(DesignSystem.Spacing.m)
+            .background(Color(.systemGray6))
+            .cornerRadius(DesignSystem.Spacing.m)
+            .padding(.horizontal)
+            
+            if !listing.autoAcceptBookings {
+                VStack(spacing: 8) {
+                    Image(systemName: "bell.badge.fill")
+                        .font(.title2)
+                        .foregroundColor(.orange)
+                    Text("You'll receive a notification when the host responds")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding()
+            }
+            
+            Spacer()
+            
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(DesignSystem.Colors.primary)
+                    .foregroundColor(.white)
+                    .cornerRadius(DesignSystem.Spacing.m)
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
     }
     
     // MARK: - Header Section
@@ -425,7 +549,15 @@ struct PrivateListingDetailView: View {
             )
             
             isBooking = false
-            dismiss()
+            
+            // Show success view
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                bookingSuccess = true
+            }
+            
+            // Haptic feedback
+            let generator = UINotificationFeedbackGenerator()
+            generator.notificationOccurred(.success)
         }
     }
 }

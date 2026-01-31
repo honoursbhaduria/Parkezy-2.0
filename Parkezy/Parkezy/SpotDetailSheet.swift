@@ -27,29 +27,34 @@ struct SpotDetailSheet: View {
     
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: DesignSystem.Spacing.l) {
-                    // MARK: - Header Card
-                    
-                    headerCard
-                    
-                    // MARK: - Features Grid
-                    
-                    featuresSection
-                    
-                    // MARK: - Location & Distance
-                    
-                    locationSection
-                    
-                    // MARK: - Pricing Info
-                    
-                    pricingSection
-                    
-                    // MARK: - Book Button
-                    
-                    bookButton
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: DesignSystem.Spacing.l) {
+                        // MARK: - Header Card
+                        
+                        headerCard
+                        
+                        // MARK: - Features Grid
+                        
+                        featuresSection
+                        
+                        // MARK: - Location & Distance
+                        
+                        locationSection
+                        
+                        // MARK: - Pricing Info
+                        
+                        pricingSection
+                    }
+                    .padding(DesignSystem.Spacing.m)
                 }
-                .padding(DesignSystem.Spacing.m)
+                
+                // MARK: - Sticky Book Button
+                
+                bookButton
+                    .padding(.horizontal, DesignSystem.Spacing.m)
+                    .padding(.bottom, DesignSystem.Spacing.m)
+                    .background(Color(.systemBackground))
             }
             .navigationTitle("Spot Details")
             .navigationBarTitleDisplayMode(.inline)

@@ -391,6 +391,8 @@ struct CommercialBookingSheet: View {
     @State private var startNow = true
     @State private var scheduledStart = Date()
     @State private var isBooking = false
+    @State private var bookingSuccess = false
+    @State private var activeBookingID: UUID?
     
     private var hourlyRate: Double {
         slot.hourlyRateOverride ?? facility.defaultHourlyRate
@@ -402,8 +404,120 @@ struct CommercialBookingSheet: View {
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section {
+            if bookingSuccess {
+                bookingSuccessView
+            } else {
+                bookingFormView
+            }
+        }
+    }
+    
+    private var bookingSuccessView: some View {
+        VStack(spacing: DesignSystem.Spacing.xl) {
+            Spacer()
+            
+            // Success Icon
+            ZStack {
+                Circle()
+                    .fill(DesignSystem.Colors.success.opacity(0.1))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 80))
+                    .foregroundColor(DesignSystem.Colors.success)
+            }
+            
+            Text("Booking Confirmed!")
+                .font(.title.bold())
+            
+            Text("Your parking spot is reserved")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            // Booking Details Card
+            VStack(spacing: DesignSystem.Spacing.m) {
+                HStack {
+                    Text("Facility")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(facility.name)
+                        .fontWeight(.medium)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("Slot")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text(slot.slotNumber)
+                        .fontWeight(.medium)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("Duration")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(Int(duration)) hour\(duration > 1 ? "s" : "")")
+                        .fontWeight(.medium)
+                }
+                
+                Divider()
+                
+                HStack {
+                    Text("Amount Paid")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("₹\(Int(totalCost))")
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignSystem.Colors.primary)
+                }
+            }
+            .padding(DesignSystem.Spacing.m)
+            .background(Color(.systemGray6))
+            .cornerRadius(DesignSystem.Spacing.m)
+            .padding(.horizontal)
+            
+            // QR Code Placeholder
+            VStack(spacing: DesignSystem.Spacing.s) {
+                Image(systemName: "qrcode")
+                    .font(.system(size: 100))
+                    .foregroundColor(.primary)
+                
+                Text("Show this at entry")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(DesignSystem.Spacing.l)
+            .background(Color.white)
+            .cornerRadius(DesignSystem.Spacing.m)
+            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+            
+            Spacer()
+            
+            Button {
+                dismiss()
+            } label: {
+                Text("Done")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(DesignSystem.Colors.primary)
+                    .foregroundColor(.white)
+                    .cornerRadius(DesignSystem.Spacing.m)
+            }
+            .padding(.horizontal)
+            .padding(.bottom)
+        }
+        .navigationTitle("Booking Confirmed")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+    
+    private var bookingFormView: some View {
+        Form {
+            Section {
                     HStack {
                         Text("Facility")
                         Spacer()
@@ -482,7 +596,6 @@ struct CommercialBookingSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-        }
     }
     
     private func bookSlot() {
@@ -491,14 +604,24 @@ struct CommercialBookingSheet: View {
         // Simulate booking
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             let startTime = startNow ? Date() : scheduledStart
-            _ = viewModel.bookSlot(
+            let booking = viewModel.bookSlot(
                 facilityID: facility.id,
                 slotID: slot.id,
                 startTime: startTime,
                 duration: duration
             )
             isBooking = false
-            dismiss()
+            
+            if let booking = booking {
+                activeBookingID = booking.id
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                    bookingSuccess = true
+                }
+                
+                // Haptic feedback
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
         }
     }
 }
