@@ -424,7 +424,7 @@ class PrivateParkingViewModel: ObservableObject {
         pendingApprovals.removeAll { $0.id == bookingID }
     }
     
-    /// Reject a pending booking (host action)
+    /// Reuse the rejection logic
     func rejectBooking(_ bookingID: UUID, reason: String?) {
         guard let index = bookings.firstIndex(where: { $0.id == bookingID }) else { return }
         
@@ -432,6 +432,49 @@ class PrivateParkingViewModel: ObservableObject {
         bookings[index].rejectionReason = reason
         
         pendingApprovals.removeAll { $0.id == bookingID }
+    }
+    
+    // MARK: - Listing Management
+    
+    /// Create a new private listing
+    func addListing(
+        title: String,
+        address: String,
+        slots: Int,
+        hourlyRate: Double,
+        dailyRate: Double,
+        monthlyRate: Double,
+        isCovered: Bool,
+        hasCCTV: Bool,
+        hasEV: Bool,
+        description: String
+    ) {
+        // Create user ID (simulating current user)
+        let ownerID = myListings.first?.ownerID ?? UUID()
+        let ownerName = myListings.first?.ownerName ?? "Current User"
+        
+        let newListing = createListing(
+            title: title,
+            address: address,
+            lat: 28.5 + Double.random(in: -0.1...0.1), // Random nearby location for demo
+            lon: 77.2 + Double.random(in: -0.1...0.1),
+            slots: slots,
+            hourly: hourlyRate,
+            daily: dailyRate,
+            monthly: monthlyRate,
+            isCovered: isCovered,
+            hasEV: hasEV,
+            ownerID: ownerID,
+            ownerName: ownerName
+        )
+        
+        // Update description and amenities
+        var updatedListing = newListing
+        updatedListing.listingDescription = description
+        updatedListing.hasCCTV = hasCCTV
+        
+        listings.insert(updatedListing, at: 0)
+        myListings.insert(updatedListing, at: 0)
     }
     
     // MARK: - Computed Properties

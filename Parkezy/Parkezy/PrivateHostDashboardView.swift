@@ -165,18 +165,10 @@ struct PrivateHostDashboardView: View {
                     .padding(.vertical, DesignSystem.Spacing.l)
             } else {
                 ForEach(recentBookings) { booking in
-                    NavigationLink {
-                        BookingDetailView(
-                            booking: booking,
-                            listingName: viewModel.listings.first { $0.id == booking.listingID }?.title ?? "Unknown"
-                        )
-                    } label: {
-                        ActivityRow(
-                            booking: booking,
-                            listingName: viewModel.listings.first { $0.id == booking.listingID }?.title ?? "Unknown"
-                        )
-                    }
-                    .buttonStyle(.plain)
+                    ActivityRow(
+                        booking: booking,
+                        listingName: viewModel.listings.first { $0.id == booking.listingID }?.title ?? "Unknown"
+                    )
                 }
             }
         }
