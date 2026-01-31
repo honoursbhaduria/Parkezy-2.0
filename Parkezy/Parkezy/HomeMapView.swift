@@ -26,129 +26,9 @@ struct HomeMapView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            // MARK: - Map
-            
-            Map(position: $cameraPosition, selection: $selectedSpot) {
-                // User Location
-                UserAnnotation()
-                
-                // Parking Spot Annotations
-                ForEach(filteredSpots) { spot in
-                    Annotation(spot.address, coordinate: spot.coordinates) {
-                        SpotAnnotationView(spot: spot, isSelected: selectedSpot?.id == spot.id)
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                    selectedSpot = spot
-                                    showSpotDetail = true
-                                }
-                            }
-                    }
-                }
-            }
-            .mapStyle(.standard(elevation: .realistic))
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-                MapScaleView()
-            }
-            .ignoresSafeArea()
-            
-            // MARK: - Top Search Bar
-            
-            VStack(spacing: 0) {
-                HStack(spacing: DesignSystem.Spacing.m) {
-                    // Search Field
-                    HStack {
-                        Image(systemName: mapViewModel.isGeocoding ? "" : "magnifyingglass")
-                            .foregroundColor(.gray)
-                        
-                        if mapViewModel.isGeocoding {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        }
-                        
-                        TextField("Search places (e.g., Noida, Delhi)...", text: $searchText)
-                            .textFieldStyle(.plain)
-                            .onSubmit {
-                                performSearch()
-                            }
-                        
-                        if !searchText.isEmpty {
-                            Button {
-                                searchText = ""
-                                mapViewModel.clearLocationSearch()
-                                returnToUserLocation()
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                    }
-                    .padding(DesignSystem.Spacing.m)
-                    .background(Color.white)
-                    .cornerRadius(DesignSystem.Spacing.m)
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                    
-                    // Filter Button
-                    Button {
-                        showFilters.toggle()
-                    } label: {
-                        Image(systemName: showFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
-                            .font(.title2)
-                            .foregroundColor(DesignSystem.Colors.primary)
-                            .padding(DesignSystem.Spacing.m)
-                            .background(Color.white)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                    }
-                }
-                .padding(.horizontal, DesignSystem.Spacing.m)
-                .padding(.top, DesignSystem.Spacing.m)
-                
-                // Filter Pills
-                if showFilters {
-                    FilterPillsView(mapViewModel: mapViewModel)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
-            }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showFilters)
-            
-            // MARK: - Bottom Stats Card
-            
-            VStack {
-                Spacer()
-                
-                HStack(spacing: DesignSystem.Spacing.l) {
-                    StatCard(
-                        icon: "parkingsign.circle.fill",
-                        title: "\(filteredSpots.count)",
-                        subtitle: "Available"
-                    )
-                    
-                    if let nearest = mapViewModel.nearestSpot {
-                        StatCard(
-                            icon: "location.fill",
-                            title: String(format: "%.1f km", nearest.distance / 1000),
-                            subtitle: "Nearest"
-                        )
-                    }
-                    
-                    if let cheapest = filteredSpots.min(by: { $0.pricePerHour < $1.pricePerHour }) {
-                        StatCard(
-                            icon: "indianrupeesign.circle.fill",
-                            title: "₹\(Int(cheapest.pricePerHour))",
-                            subtitle: "From"
-                        )
-                    }
-                }
-                .padding(DesignSystem.Spacing.m)
-                .background(
-                    .ultraThinMaterial,
-                    in: RoundedRectangle(cornerRadius: DesignSystem.Spacing.m)
-                )
-                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                .padding(DesignSystem.Spacing.m)
-            }
+            mapView
+            searchBarView
+            statsView
         }
         .sheet(isPresented: $showSpotDetail) {
             if let spot = selectedSpot {
@@ -160,7 +40,6 @@ struct HomeMapView: View {
         }
         .onChange(of: selectedSpot) { _, newSpot in
             if let spot = newSpot {
-                // Animate camera to selected spot
                 withAnimation(.easeInOut(duration: 0.5)) {
                     cameraPosition = .camera(
                         MapCamera(
@@ -181,13 +60,133 @@ struct HomeMapView: View {
         mapViewModel.filteredSpots(searchQuery: searchText)
     }
     
+    // MARK: - View Components
+    
+    private var mapView: some View {
+        Map(position: $cameraPosition, selection: $selectedSpot) {
+            UserAnnotation()
+            
+            ForEach(filteredSpots) { spot in
+                Annotation(spot.address, coordinate: spot.coordinates) {
+                    SpotAnnotationView(spot: spot, isSelected: selectedSpot?.id == spot.id)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                selectedSpot = spot
+                                showSpotDetail = true
+                            }
+                        }
+                }
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+            MapScaleView()
+        }
+        .ignoresSafeArea()
+    }
+    
+    private var searchBarView: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: DesignSystem.Spacing.m) {
+                HStack {
+                    Image(systemName: mapViewModel.isGeocoding ? "" : "magnifyingglass")
+                        .foregroundColor(.gray)
+                    
+                    if mapViewModel.isGeocoding {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                    }
+                    
+                    TextField("Search places (e.g., Noida, Delhi)...", text: $searchText)
+                        .textFieldStyle(.plain)
+                        .onSubmit {
+                            performSearch()
+                        }
+                    
+                    if !searchText.isEmpty {
+                        Button {
+                            searchText = ""
+                            mapViewModel.clearLocationSearch()
+                            returnToUserLocation()
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                .padding(DesignSystem.Spacing.m)
+                .background(Color.white)
+                .cornerRadius(DesignSystem.Spacing.m)
+                .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                
+                Button {
+                    showFilters.toggle()
+                } label: {
+                    Image(systemName: showFilters ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+                        .font(.title2)
+                        .foregroundColor(DesignSystem.Colors.primary)
+                        .padding(DesignSystem.Spacing.m)
+                        .background(Color.white)
+                        .clipShape(Circle())
+                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                }
+            }
+            .padding(.horizontal, DesignSystem.Spacing.m)
+            .padding(.top, DesignSystem.Spacing.m)
+            
+            if showFilters {
+                FilterPillsView(mapViewModel: mapViewModel)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: showFilters)
+    }
+    
+    private var statsView: some View {
+        VStack {
+            Spacer()
+            
+            HStack(spacing: DesignSystem.Spacing.l) {
+                StatCard(
+                    icon: "parkingsign.circle.fill",
+                    title: "\(filteredSpots.count)",
+                    subtitle: "Available"
+                )
+                
+                if let nearest = mapViewModel.nearestSpot {
+                    StatCard(
+                        icon: "location.fill",
+                        title: String(format: "%.1f km", nearest.distance / 1000),
+                        subtitle: "Nearest"
+                    )
+                }
+                
+                if let cheapest = filteredSpots.min(by: { $0.pricePerHour < $1.pricePerHour }) {
+                    StatCard(
+                        icon: "indianrupeesign.circle.fill",
+                        title: "₹\(Int(cheapest.pricePerHour))",
+                        subtitle: "From"
+                    )
+                }
+            }
+            .padding(DesignSystem.Spacing.m)
+            .background(
+                .ultraThinMaterial,
+                in: RoundedRectangle(cornerRadius: DesignSystem.Spacing.m)
+            )
+            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
+            .padding(DesignSystem.Spacing.m)
+        }
+    }
+    
     // MARK: - Methods
     
     private func setupMap() {
         mapViewModel.loadParkingSpots()
         mapViewModel.startLocationTracking()
         
-        // Set initial camera position to user location or Delhi center
         if let userLocation = mapViewModel.userLocation {
             cameraPosition = .camera(
                 MapCamera(
@@ -196,7 +195,6 @@ struct HomeMapView: View {
                 )
             )
         } else {
-            // Default to Delhi center
             cameraPosition = .camera(
                 MapCamera(
                     centerCoordinate: CLLocationCoordinate2D(latitude: 28.6139, longitude: 77.2090),
@@ -204,6 +202,7 @@ struct HomeMapView: View {
                 )
             )
         }
+    }
     
     private func performSearch() {
         mapViewModel.searchLocation(query: searchText) { coordinate in
