@@ -59,15 +59,25 @@ struct HomeMapView: View {
                 HStack(spacing: DesignSystem.Spacing.m) {
                     // Search Field
                     HStack {
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: mapViewModel.isGeocoding ? "" : "magnifyingglass")
                             .foregroundColor(.gray)
                         
-                        TextField("Search parking spots...", text: $searchText)
+                        if mapViewModel.isGeocoding {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                        
+                        TextField("Search places (e.g., Noida, Delhi)...", text: $searchText)
                             .textFieldStyle(.plain)
+                            .onSubmit {
+                                performSearch()
+                            }
                         
                         if !searchText.isEmpty {
                             Button {
                                 searchText = ""
+                                mapViewModel.clearLocationSearch()
+                                returnToUserLocation()
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
                                     .foregroundColor(.gray)
@@ -193,6 +203,36 @@ struct HomeMapView: View {
                     distance: 10000
                 )
             )
+        }
+    
+    private func performSearch() {
+        mapViewModel.searchLocation(query: searchText) { coordinate in
+            guard let coordinate = coordinate else {
+                print("Location not found")
+                return
+            }
+            
+            withAnimation(.easeInOut(duration: 0.8)) {
+                cameraPosition = .camera(
+                    MapCamera(
+                        centerCoordinate: coordinate,
+                        distance: 3000
+                    )
+                )
+            }
+        }
+    }
+    
+    private func returnToUserLocation() {
+        if let userLocation = mapViewModel.userLocation {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                cameraPosition = .camera(
+                    MapCamera(
+                        centerCoordinate: userLocation.coordinate,
+                        distance: 5000
+                    )
+                )
+            }
         }
     }
 }

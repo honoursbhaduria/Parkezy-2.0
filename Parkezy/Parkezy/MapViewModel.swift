@@ -28,6 +28,12 @@ class MapViewModel: ObservableObject {
     /// Search query
     @Published var searchQuery = ""
     
+    /// Searched location from geocoding
+    @Published var searchedLocation: CLLocationCoordinate2D?
+    
+    /// Geocoding in progress
+    @Published var isGeocoding = false
+    
     // MARK: - Filters
     
     @Published var filterEVCharging = false
@@ -153,6 +159,44 @@ class MapViewModel: ObservableObject {
     
     func clearSelection() {
         selectedSpot = nil
+    }
+    
+    // MARK: - Location Search
+    
+    func searchLocation(query: String, completion: @escaping (CLLocationCoordinate2D?) -> Void) {
+        guard !query.isEmpty else {
+            searchedLocation = nil
+            completion(nil)
+            return
+        }
+        
+        isGeocoding = true
+        
+        let geocoder = CLGeocoder()
+        geocoder.geocodeAddressString(query) { [weak self] placemarks, error in
+            DispatchQueue.main.async {
+                self?.isGeocoding = false
+                
+                if let error = error {
+                    print("Geocoding error: \(error.localizedDescription)")
+                    self?.searchedLocation = nil
+                    completion(nil)
+                    return
+                }
+                
+                if let coordinate = placemarks?.first?.location?.coordinate {
+                    self?.searchedLocation = coordinate
+                    completion(coordinate)
+                } else {
+                    self?.searchedLocation = nil
+                    completion(nil)
+                }
+            }
+        }
+    }
+    
+    func clearLocationSearch() {
+        searchedLocation = nil
     }
     
     // MARK: - Reset Filters
