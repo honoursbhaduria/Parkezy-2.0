@@ -33,20 +33,63 @@ class CommercialParkingViewModel: ObservableObject {
     @Published var filterHasEV: Bool = false
     @Published var filterHasValet: Bool = false
     
+    // Repository references (for Firebase mode)
+    private let facilityRepo = CommercialFacilityRepository.shared
+    private let bookingRepo = BookingRepository.shared
+    
     // Timer for countdown updates
     private var countdownTimer: Timer?
+    
+    // Loading states
+    @Published var isLoading = false
+    @Published var errorMessage: String?
     
     // MARK: - Initialization
     
     init() {
         activeBookings = []
-        generateMockFacilities()
-        generateMockBookings()
+        
+        if AppConfig.useFirebase {
+            loadFromFirebase()
+        } else {
+            generateMockFacilities()
+            generateMockBookings()
+        }
         startCountdownTimer()
     }
     
     deinit {
         countdownTimer?.invalidate()
+    }
+    
+    // MARK: - Firebase Data Loading
+    
+    /// Load facilities from Firebase
+    private func loadFromFirebase() {
+        Task {
+            isLoading = true
+            defer { isLoading = false }
+            
+            do {
+                let defaultLocation = CLLocationCoordinate2D(latitude: 28.6139, longitude: 77.2090)
+                facilities = try await facilityRepo.getNearbyFacilities(location: defaultLocation, radiusKm: 20)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    /// Refresh facilities from Firebase
+    func refreshFacilities(near location: CLLocationCoordinate2D? = nil) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let searchLocation = location ?? CLLocationCoordinate2D(latitude: 28.6139, longitude: 77.2090)
+            facilities = try await facilityRepo.getNearbyFacilities(location: searchLocation, radiusKm: 20)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
     
     // MARK: - Countdown Timer

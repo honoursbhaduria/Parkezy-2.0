@@ -38,15 +38,29 @@ class PrivateParkingViewModel: ObservableObject {
     @Published var filterHasEV: Bool = false
     @Published var filterIsCovered: Bool = false
     
+    // Repository reference (for Firebase mode)
+    private let listingRepo = PrivateListingRepository.shared
+    private let bookingRepo = BookingRepository.shared
+    
     // Timer for countdown updates
     private var countdownTimer: Timer?
+    
+    // Loading states
+    @Published var isLoading = false
+    @Published var errorMessage: String?
     
     // MARK: - Initialization
     
     init() {
-        generateMockListings()
-        generateMockBookings()
-        calculateSuggestedPrices()
+        if AppConfig.useFirebase {
+            // Load from Firebase repository
+            loadFromFirebase()
+        } else {
+            // Use mock data for development/testing
+            generateMockListings()
+            generateMockBookings()
+            calculateSuggestedPrices()
+        }
         startCountdownTimer()
     }
     
@@ -62,6 +76,59 @@ class PrivateParkingViewModel: ObservableObject {
                 self?.objectWillChange.send()
             }
         }
+    }
+    
+    // MARK: - Firebase Data Loading
+    
+    /// Load listings and bookings from Firebase
+    private func loadFromFirebase() {
+        Task {
+            isLoading = true
+            defer { isLoading = false }
+            
+            do {
+                // Get current user's location or use default Delhi location
+                let defaultLocation = CLLocationCoordinate2D(latitude: 28.6139, longitude: 77.2090)
+                
+                // Fetch nearby listings
+                listings = try await listingRepo.getNearbyListings(
+                    location: defaultLocation,
+                    radiusKm: 15
+                )
+                
+                // Fetch user's own listings if they're a host
+                if let userID = FirebaseManager.shared.currentUserID {
+                    myListings = try await listingRepo.getOwnerListings(ownerID: userID)
+                    
+                    // Setup real-time listener for host's listings
+                    setupListingsListener(ownerID: userID)
+                }
+                
+                calculateSuggestedPrices()
+                
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+    
+    /// Refresh listings from Firebase
+    func refreshListings(near location: CLLocationCoordinate2D? = nil) async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let searchLocation = location ?? CLLocationCoordinate2D(latitude: 28.6139, longitude: 77.2090)
+            listings = try await listingRepo.getNearbyListings(location: searchLocation, radiusKm: 15)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+    
+    /// Setup real-time listener for owner's listings
+    private func setupListingsListener(ownerID: String) {
+        // The listener will automatically update myListings when changes occur
+        // For now, we use a simple fetch. Real-time updates can be added with Combine
     }
     
     // MARK: - Mock Data Generation
@@ -344,6 +411,22 @@ class PrivateParkingViewModel: ObservableObject {
     
     /// Request a booking (may require approval)
     func requestBooking(listingID: UUID, slotID: UUID, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String? = nil) -> PrivateBooking? {
+        // For Firebase mode, use async version
+        if AppConfig.useFirebase {
+            Task {
+                await requestBookingAsync(
+                    listingID: listingID.uuidString,
+                    slotID: slotID.uuidString,
+                    startTime: startTime,
+                    endTime: endTime,
+                    durationType: durationType,
+                    driverMessage: driverMessage
+                )
+            }
+            return nil // Booking created asynchronously
+        }
+        
+        // Mock data path (existing logic)
         guard let listingIndex = listings.firstIndex(where: { $0.id == listingID }),
               let slotIndex = listings[listingIndex].slots.firstIndex(where: { $0.id == slotID }) else {
             return nil
@@ -403,6 +486,40 @@ class PrivateParkingViewModel: ObservableObject {
         }
         
         return booking
+    }
+    
+    /// Firebase-integrated async booking request
+    func requestBookingAsync(listingID: String, slotID: String, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String?) async {
+        guard let listing = listings.first(where: { $0.id.uuidString == listingID }) else { return }
+        
+        let rate: Double
+        switch durationType {
+        case .hourly: rate = listing.hourlyRate
+        case .daily: rate = listing.dailyRate
+        case .monthly: rate = listing.monthlyRate
+        }
+        
+        let duration = endTime.timeIntervalSince(startTime) / 3600
+        let cost = durationType == .hourly ? rate * duration : rate
+        
+        let request = PrivateBookingRequest(
+            listingID: listingID,
+            slotID: slotID,
+            hostID: listing.ownerID.uuidString,
+            scheduledStart: startTime,
+            scheduledEnd: endTime,
+            hourlyRate: rate,
+            estimatedCost: cost * 1.18, // Including GST
+            driverMessage: driverMessage
+        )
+        
+        do {
+            _ = try await bookingRepo.requestPrivateBooking(request)
+            // Refresh listings to show updated availability
+            await refreshListings()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
     
     /// Approve a pending booking (host action)
