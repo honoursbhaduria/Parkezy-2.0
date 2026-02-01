@@ -630,33 +630,16 @@ struct PrivateSlotCard: View {
 struct PrivateBookingSheet: View {
     let listing: PrivateParkingListing
     let slot: PrivateParkingSlot
-    var initialDurationType: PrivateBookingDuration = .hourly
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var viewModel: PrivateParkingViewModel
     
-    @State private var durationType: PrivateBookingDuration = .hourly
     @State private var hourlyDuration: Double = 3
     @State private var startDate = Date()
-    @State private var endDate = Date().addingTimeInterval(3600 * 24)
     @State private var message = ""
     @State private var isBooking = false
     
-    private var rate: Double {
-        switch durationType {
-        case .hourly: return listing.hourlyRate
-        case .daily: return listing.dailyRate
-        case .monthly: return listing.monthlyRate
-        }
-    }
-    
     private var totalCost: Double {
-        switch durationType {
-        case .hourly: return listing.hourlyRate * hourlyDuration * 1.18
-        case .daily:
-            let days = max(1, Calendar.current.dateComponents([.day], from: startDate, to: endDate).day ?? 1)
-            return listing.dailyRate * Double(days) * 1.18
-        case .monthly: return listing.monthlyRate * 1.18
-        }
+        listing.hourlyRate * hourlyDuration * 1.18
     }
     
     var body: some View {
@@ -678,26 +661,11 @@ struct PrivateBookingSheet: View {
                     }
                 }
                 
-                Section("Duration Type") {
-                    Picker("Type", selection: $durationType) {
-                        ForEach(PrivateBookingDuration.allCases, id: \.self) { type in
-                            Label(type.rawValue, systemImage: type.icon).tag(type)
-                        }
+                Section("Booking Details") {
+                    Stepper(value: $hourlyDuration, in: 1...24, step: 0.5) {
+                        Text("\(String(format: "%.1f", hourlyDuration)) hours")
                     }
-                    .pickerStyle(.segmented)
-                    
-                    switch durationType {
-                    case .hourly:
-                        Stepper(value: $hourlyDuration, in: 1...24, step: 0.5) {
-                            Text("\(String(format: "%.1f", hourlyDuration)) hours")
-                        }
-                        DatePicker("Start", selection: $startDate, in: Date()...)
-                    case .daily:
-                        DatePicker("From", selection: $startDate, in: Date()..., displayedComponents: .date)
-                        DatePicker("To", selection: $endDate, in: startDate..., displayedComponents: .date)
-                    case .monthly:
-                        DatePicker("Start Month", selection: $startDate, in: Date()..., displayedComponents: .date)
-                    }
+                    DatePicker("Start Time", selection: $startDate, in: Date()...)
                 }
                 
                 Section("Message to Host (Optional)") {
@@ -709,7 +677,7 @@ struct PrivateBookingSheet: View {
                     HStack {
                         Text("Rate")
                         Spacer()
-                        Text("₹\(Int(rate))/\(durationType.rawValue.lowercased())")
+                        Text("₹\(Int(listing.hourlyRate))/hour")
                     }
                     HStack {
                         Text("Total (incl. GST)")
@@ -752,9 +720,6 @@ struct PrivateBookingSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .onAppear {
-                durationType = initialDurationType
-            }
         }
     }
     
@@ -762,22 +727,14 @@ struct PrivateBookingSheet: View {
         isBooking = true
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-            let endTime: Date
-            switch durationType {
-            case .hourly:
-                endTime = startDate.addingTimeInterval(hourlyDuration * 3600)
-            case .daily:
-                endTime = endDate
-            case .monthly:
-                endTime = Calendar.current.date(byAdding: .month, value: 1, to: startDate)!
-            }
+            let endTime = startDate.addingTimeInterval(hourlyDuration * 3600)
             
             _ = viewModel.requestBooking(
                 listingID: listing.id,
                 slotID: slot.id,
                 startTime: startDate,
                 endTime: endTime,
-                durationType: durationType,
+                durationType: .hourly,
                 driverMessage: message.isEmpty ? nil : message
             )
             

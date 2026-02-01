@@ -219,7 +219,7 @@ class PrivateParkingViewModel: ObservableObject {
                 title: "Luxury Villa Parking",
                 address: "DLF Phase 4, Gurugram",
                 lat: 28.4650, lon: 77.0920,
-                slots: 3, hourly: 70, daily: 500, monthly: 5000,
+                slots: 3, hourly: 70,
                 isCovered: true, hasEV: true, ownerID: UUID(), ownerName: "Kavita Malhotra"
             ),
             createListing(
@@ -237,7 +237,7 @@ class PrivateParkingViewModel: ObservableObject {
     
     private func createListing(
         title: String, address: String, lat: Double, lon: Double,
-        slots: Int, hourly: Double, daily: Double, monthly: Double,
+        slots: Int, hourly: Double,
         isCovered: Bool, hasEV: Bool, ownerID: UUID, ownerName: String
     ) -> PrivateParkingListing {
         PrivateParkingListing(
@@ -250,8 +250,6 @@ class PrivateParkingViewModel: ObservableObject {
             listingDescription: "A convenient parking spot in a safe residential area. Easy access and secure location.",
             slots: generatePrivateSlots(count: slots),
             hourlyRate: hourly,
-            dailyRate: daily,
-            monthlyRate: monthly,
             flatFullBookingRate: hourly * Double(slots) * 8,
             autoAcceptBookings: Bool.random(),
             instantBookingDiscount: Bool.random() ? 10 : nil,
@@ -437,15 +435,9 @@ class PrivateParkingViewModel: ObservableObject {
         
         guard !slot.isOccupied && !slot.isDisabled else { return nil }
         
-        let rate: Double
-        switch durationType {
-        case .hourly: rate = listing.hourlyRate
-        case .daily: rate = listing.dailyRate
-        case .monthly: rate = listing.monthlyRate
-        }
-        
+        let rate = listing.hourlyRate
         let duration = endTime.timeIntervalSince(startTime) / 3600
-        let cost = durationType == .hourly ? rate * duration : rate
+        let cost = rate * duration
         
         let booking = PrivateBooking(
             id: UUID(),
@@ -492,15 +484,9 @@ class PrivateParkingViewModel: ObservableObject {
     func requestBookingAsync(listingID: String, slotID: String, startTime: Date, endTime: Date, durationType: PrivateBookingDuration, driverMessage: String?) async {
         guard let listing = listings.first(where: { $0.id.uuidString == listingID }) else { return }
         
-        let rate: Double
-        switch durationType {
-        case .hourly: rate = listing.hourlyRate
-        case .daily: rate = listing.dailyRate
-        case .monthly: rate = listing.monthlyRate
-        }
-        
+        let rate = listing.hourlyRate
         let duration = endTime.timeIntervalSince(startTime) / 3600
-        let cost = durationType == .hourly ? rate * duration : rate
+        let cost = rate * duration
         
         let request = PrivateBookingRequest(
             listingID: listingID,
@@ -559,8 +545,6 @@ class PrivateParkingViewModel: ObservableObject {
         address: String,
         slots: Int,
         hourlyRate: Double,
-        dailyRate: Double,
-        monthlyRate: Double,
         isCovered: Bool,
         hasCCTV: Bool,
         hasEV: Bool,
@@ -577,8 +561,6 @@ class PrivateParkingViewModel: ObservableObject {
             lon: 77.2 + Double.random(in: -0.1...0.1),
             slots: slots,
             hourly: hourlyRate,
-            daily: dailyRate,
-            monthly: monthlyRate,
             isCovered: isCovered,
             hasEV: hasEV,
             ownerID: ownerID,
@@ -586,6 +568,42 @@ class PrivateParkingViewModel: ObservableObject {
         )
         
         // Update description and amenities
+        var updatedListing = newListing
+        updatedListing.listingDescription = description
+        updatedListing.hasCCTV = hasCCTV
+        
+        listings.insert(updatedListing, at: 0)
+        myListings.insert(updatedListing, at: 0)
+    }
+    
+    /// Create a new private listing with explicit coordinates
+    func addListingWithCoordinates(
+        title: String,
+        address: String,
+        coordinates: CLLocationCoordinate2D,
+        slots: Int,
+        hourlyRate: Double,
+        isCovered: Bool,
+        hasCCTV: Bool,
+        hasEV: Bool,
+        description: String
+    ) {
+        let ownerID = myListings.first?.ownerID ?? UUID()
+        let ownerName = myListings.first?.ownerName ?? "Current User"
+        
+        let newListing = createListing(
+            title: title,
+            address: address,
+            lat: coordinates.latitude,
+            lon: coordinates.longitude,
+            slots: slots,
+            hourly: hourlyRate,
+            isCovered: isCovered,
+            hasEV: hasEV,
+            ownerID: ownerID,
+            ownerName: ownerName
+        )
+        
         var updatedListing = newListing
         updatedListing.listingDescription = description
         updatedListing.hasCCTV = hasCCTV

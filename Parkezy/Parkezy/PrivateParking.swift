@@ -33,8 +33,6 @@ struct PrivateParkingListing: Identifiable, Hashable {
     
     // Pricing (owner adjustable, with defaults)
     var hourlyRate: Double // Default ₹40
-    var dailyRate: Double  // Default ₹300
-    var monthlyRate: Double // Default ₹3000
     var flatFullBookingRate: Double? // Optional flat rate for full listing
     
     // Booking settings
@@ -235,15 +233,9 @@ struct PrivateBooking: Identifiable, Hashable {
 
 enum PrivateBookingDuration: String, CaseIterable, Codable {
     case hourly = "Hourly"
-    case daily = "Daily"
-    case monthly = "Monthly"
     
     var icon: String {
-        switch self {
-        case .hourly: return "clock.fill"
-        case .daily: return "sun.max.fill"
-        case .monthly: return "calendar"
-        }
+        return "clock.fill"
     }
 }
 

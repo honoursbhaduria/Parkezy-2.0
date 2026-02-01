@@ -69,14 +69,14 @@ struct PrivateHostDashboardView: View {
                 HostStatCard(
                     icon: "indianrupeesign.circle.fill",
                     label: "This Month",
-                    value: "₹\(Int.random(in: 8000...15000))",
+                    value: "₹\(calculateMonthlyEarnings())",
                     color: DesignSystem.Colors.primary
                 )
                 
                 HostStatCard(
                     icon: "star.fill",
                     label: "Avg Rating",
-                    value: String(format: "%.1f", viewModel.myListings.map { $0.rating }.reduce(0, +) / Double(max(1, viewModel.myListings.count))),
+                    value: viewModel.myListings.isEmpty ? "N/A" : String(format: "%.1f", viewModel.myListings.map { $0.rating }.reduce(0, +) / Double(viewModel.myListings.count)),
                     color: .yellow
                 )
             }
@@ -178,6 +178,26 @@ struct PrivateHostDashboardView: View {
                 }
             }
         }
+    }
+    
+    
+    // MARK: - Helper Functions
+    
+    /// Calculate total earnings from completed bookings this month
+    private func calculateMonthlyEarnings() -> Int {
+        let calendar = Calendar.current
+        let now = Date()
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+        
+        let monthlyEarnings = viewModel.bookings
+            .filter { booking in
+                booking.status == .completed &&
+                booking.actualEndTime ?? booking.scheduledEndTime >= startOfMonth
+            }
+            .compactMap { $0.hostEarnings }
+            .reduce(0, +)
+        
+        return Int(monthlyEarnings)
     }
     
     // Computed property for recent bookings

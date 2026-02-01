@@ -8,32 +8,56 @@ struct AddPrivateListingView: View {
     // Listing Details
     @State private var title = ""
     @State private var address = ""
+    @State private var coordinates: CLLocationCoordinate2D?
     @State private var description = ""
     @State private var slots = 1
     
     // Pricing
     @State private var hourlyRate: Double = 40
-    @State private var dailyRate: Double = 300
-    @State private var monthlyRate: Double = 3000
     
     // Amenities
     @State private var isCovered = false
     @State private var hasCCTV = false
     @State private var hasEV = false
     
+    // Location Picker
+    @State private var showLocationPicker = false
+    
     // Validation
     var isValid: Bool {
-        !title.isEmpty && !address.isEmpty && slots > 0
+        !title.isEmpty && !address.isEmpty && coordinates != nil && slots > 0
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("Basic Details") {
+                Section("Location") {
                     TextField("Listing Title", text: $title)
-                    TextField("Address", text: $address)
-                    TextField("Description", text: $description, axis: .vertical)
-                        .lineLimit(3...5)
+                    
+                    VStack(alignment: .leading) {
+                        if address.isEmpty {
+                            Button(action: { showLocationPicker = true }) {
+                                HStack {
+                                    Image(systemName: "map.fill")
+                                    Text("Select Location on Map")
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                }
+                            }
+                        } else {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Address")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(address)
+                                    .font(.subheadline)
+                                Button("Change Location") {
+                                    showLocationPicker = true
+                                }
+                                .font(.caption)
+                            }
+                        }
+                    }
                 }
                 
                 Section("Capacity") {
@@ -48,33 +72,20 @@ struct AddPrivateListingView: View {
                     }
                 }
                 
-                Section("Default Pricing") {
+                Section("Hourly Pricing") {
                     HStack {
-                        Text("Hourly Rate")
+                        Text("Rate per Hour")
                         Spacer()
                         TextField("₹", value: $hourlyRate, format: .number)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                     }
-                    
-                    HStack {
-                        Text("Daily Rate")
-                        Spacer()
-                        TextField("₹", value: $dailyRate, format: .number)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
-                    
-                    HStack {
-                        Text("Monthly Rate")
-                        Spacer()
-                        TextField("₹", value: $monthlyRate, format: .number)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                    }
+                }
+                
+                Section("Description") {
+                    TextField("Describe your parking space", text: $description, axis: .vertical)
+                        .lineLimit(3...5)
                 }
                 
                 Section("Amenities") {
@@ -102,17 +113,23 @@ struct AddPrivateListingView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showLocationPicker) {
+                LocationPickerView(
+                    selectedCoordinate: $coordinates,
+                    selectedAddress: $address
+                )
+            }
         }
     }
     
     private func createListing() {
-        viewModel.addListing(
+        guard let coords = coordinates else { return }
+        viewModel.addListingWithCoordinates(
             title: title,
             address: address,
+            coordinates: coords,
             slots: slots,
             hourlyRate: hourlyRate,
-            dailyRate: dailyRate,
-            monthlyRate: monthlyRate,
             isCovered: isCovered,
             hasCCTV: hasCCTV,
             hasEV: hasEV,
