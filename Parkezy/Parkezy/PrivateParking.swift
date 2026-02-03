@@ -61,6 +61,19 @@ struct PrivateParkingListing: Identifiable, Hashable {
     // Images
     var imageURLs: [String]
     
+    // MARK: - Captured Media (for new listings)
+    
+    /// Photo data captured during listing creation
+    var capturedPhotoData: [Data]?
+    
+    /// Video URL captured during listing creation
+    var capturedVideoURL: URL?
+    
+    // MARK: - Booking Duration Limit
+    
+    /// Maximum booking duration allowed
+    var maxBookingDuration: BookingDurationLimit
+    
     // MARK: - Pricing Intelligence
     
     /// Suggested price based on nearby listings
@@ -92,6 +105,29 @@ struct PrivateParkingListing: Identifiable, Hashable {
         lhs.id == rhs.id
     }
 }
+
+// MARK: - Booking Duration Limit
+
+enum BookingDurationLimit: String, CaseIterable, Codable {
+    case oneHour = "1 Hour"
+    case twoHours = "2 Hours"
+    case fourHours = "4 Hours"
+    case eightHours = "8 Hours"
+    case oneDay = "24 Hours"
+    case unlimited = "Unlimited"
+    
+    var hours: Int? {
+        switch self {
+        case .oneHour: return 1
+        case .twoHours: return 2
+        case .fourHours: return 4
+        case .eightHours: return 8
+        case .oneDay: return 24
+        case .unlimited: return nil
+        }
+    }
+}
+
 
 // MARK: - Price Competitiveness
 

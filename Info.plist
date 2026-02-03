@@ -16,9 +16,9 @@
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>ParkEzy needs background location access to monitor your parking geofence and notify you of arrival/departure.</string>
     
-    <!-- Camera Permission (for QR scanning) -->
+    <!-- Camera Permission (for QR scanning and parking space capture) -->
     <key>NSCameraUsageDescription</key>
-    <string>ParkEzy needs camera access to scan QR codes at parking locations.</string>
+    <string>ParkEzy needs camera access to capture photos and videos of your parking space, and to scan QR codes.</string>
     
     <!-- Photo Library Permission (for dispute reports) -->
     <key>NSPhotoLibraryUsageDescription</key>
