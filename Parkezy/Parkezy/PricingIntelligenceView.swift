@@ -260,6 +260,8 @@ struct PricingIntelligenceView: View {
                 listingDescription: "A nice parking spot",
                 slots: [],
                 hourlyRate: 45,
+                dailyRate: 300,
+                monthlyRate: 3000,
                 flatFullBookingRate: nil,
                 autoAcceptBookings: false,
                 instantBookingDiscount: nil,

@@ -235,9 +235,18 @@ struct PrivateBooking: Identifiable, Hashable {
 
 enum PrivateBookingDuration: String, CaseIterable, Codable {
     case hourly = "Hourly"
+    case daily = "Daily"
+    case monthly = "Monthly"
     
     var icon: String {
-        return "clock.fill"
+        switch self {
+        case .hourly:
+            return "clock.fill"
+        case .daily:
+            return "calendar.badge.clock"
+        case .monthly:
+            return "calendar"
+        }
     }
 }
 

@@ -237,7 +237,7 @@ class PrivateParkingViewModel: ObservableObject {
     
     private func createListing(
         title: String, address: String, lat: Double, lon: Double,
-        slots: Int, hourly: Double,
+        slots: Int, hourly: Double, daily: Double = 300, monthly: Double = 3000,
         isCovered: Bool, hasEV: Bool, ownerID: UUID, ownerName: String
     ) -> PrivateParkingListing {
         PrivateParkingListing(
@@ -250,6 +250,8 @@ class PrivateParkingViewModel: ObservableObject {
             listingDescription: "A convenient parking spot in a safe residential area. Easy access and secure location.",
             slots: generatePrivateSlots(count: slots),
             hourlyRate: hourly,
+            dailyRate: daily,
+            monthlyRate: monthly,
             flatFullBookingRate: hourly * Double(slots) * 8,
             autoAcceptBookings: Bool.random(),
             instantBookingDiscount: Bool.random() ? 10 : nil,

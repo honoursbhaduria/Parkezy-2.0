@@ -759,6 +759,8 @@ struct PrivateBookingSheet: View {
                 listingDescription: "A nice parking spot",
                 slots: [],
                 hourlyRate: 40,
+                dailyRate: 300,
+                monthlyRate: 3000,
                 flatFullBookingRate: nil,
                 autoAcceptBookings: false,
                 instantBookingDiscount: nil,
