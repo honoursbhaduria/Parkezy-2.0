@@ -267,6 +267,9 @@ class PrivateParkingViewModel: ObservableObject {
             rating: Double.random(in: 3.8...4.9),
             reviewCount: Int.random(in: 10...150),
             imageURLs: [],
+            capturedPhotoData: nil,
+            capturedVideoURL: nil,
+            maxBookingDuration: .unlimited,
             suggestedHourlyRate: nil
         )
     }
@@ -612,6 +615,71 @@ class PrivateParkingViewModel: ObservableObject {
         
         listings.insert(updatedListing, at: 0)
         myListings.insert(updatedListing, at: 0)
+    }
+    
+    /// Create a new private listing with full details (from Add Parking Flow)
+    func addListingWithFullDetails(
+        title: String,
+        address: String,
+        coordinates: CLLocationCoordinate2D,
+        slots: Int,
+        hourlyRate: Double,
+        dailyRate: Double,
+        monthlyRate: Double,
+        maxDuration: BookingDurationLimit,
+        is24x7: Bool,
+        availableStartTime: Date?,
+        availableEndTime: Date?,
+        availableDays: [Int],
+        isCovered: Bool,
+        hasCCTV: Bool,
+        hasEVCharging: Bool,
+        photoData: [Data],
+        description: String
+    ) {
+        let ownerID = myListings.first?.ownerID ?? UUID()
+        let ownerName = myListings.first?.ownerName ?? "Current User"
+        
+        let newSlots = generatePrivateSlots(count: slots)
+        
+        let newListing = PrivateParkingListing(
+            id: UUID(),
+            ownerID: ownerID,
+            ownerName: ownerName,
+            title: title,
+            address: address,
+            coordinates: coordinates,
+            listingDescription: description.isEmpty ? "A great parking spot." : description,
+            slots: newSlots,
+            hourlyRate: hourlyRate,
+            dailyRate: dailyRate,
+            monthlyRate: monthlyRate,
+            flatFullBookingRate: nil,
+            autoAcceptBookings: false,
+            instantBookingDiscount: nil,
+            hasCCTV: hasCCTV,
+            isCovered: isCovered,
+            hasEVCharging: hasEVCharging,
+            hasSecurityGuard: false,
+            hasWaterAccess: false,
+            is24Hours: is24x7,
+            availableFrom: availableStartTime,
+            availableTo: availableEndTime,
+            availableDays: availableDays.isEmpty ? [1, 2, 3, 4, 5, 6, 7] : availableDays,
+            rating: 5.0,
+            reviewCount: 0,
+            imageURLs: [],
+            capturedPhotoData: photoData,
+            capturedVideoURL: nil,
+            maxBookingDuration: maxDuration,
+            suggestedHourlyRate: nil
+        )
+        
+        listings.insert(newListing, at: 0)
+        myListings.insert(newListing, at: 0)
+        
+        // Calculate suggested prices including the new listing
+        calculateSuggestedPrices()
     }
     
     // MARK: - Computed Properties

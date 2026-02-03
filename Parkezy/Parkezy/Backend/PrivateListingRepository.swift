@@ -274,8 +274,20 @@ final class PrivateListingRepository: ObservableObject {
             rating: data["rating"] as? Double ?? 0,
             reviewCount: data["reviewCount"] as? Int ?? 0,
             imageURLs: data["imageURLs"] as? [String] ?? [],
+            capturedPhotoData: nil,
+            capturedVideoURL: nil,
+            maxBookingDuration: parseMaxDuration(data["maxBookingDuration"]),
             suggestedHourlyRate: nil
         )
+    }
+    
+    /// Parse max booking duration from Firestore data
+    private func parseMaxDuration(_ value: Any?) -> BookingDurationLimit {
+        if let rawValue = value as? String,
+           let duration = BookingDurationLimit(rawValue: rawValue) {
+            return duration
+        }
+        return .unlimited
     }
     
     /// Parse slot data
@@ -390,3 +402,4 @@ struct PrivateSlotData {
         ]
     }
 }
+

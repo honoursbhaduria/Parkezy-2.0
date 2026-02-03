@@ -269,6 +269,9 @@ struct PricingIntelligenceView: View {
                 availableFrom: nil, availableTo: nil, availableDays: [1,2,3,4,5,6,7],
                 rating: 4.5, reviewCount: 50,
                 imageURLs: [],
+                capturedPhotoData: nil,
+                capturedVideoURL: nil,
+                maxBookingDuration: .unlimited,
                 suggestedHourlyRate: 42
             )
         )

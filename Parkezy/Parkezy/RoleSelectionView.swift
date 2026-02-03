@@ -128,7 +128,7 @@ struct RoleSelectionView: View {
             UnifiedMapView()
                 .navigationBarBackButtonHidden(false)
         case .host:
-            HostTypeSelectionView()
+            UnifiedHostDashboardView()
                 .navigationBarBackButtonHidden(false)
         }
     }
