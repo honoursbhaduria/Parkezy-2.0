@@ -33,6 +33,8 @@ struct PrivateParkingListing: Identifiable, Hashable {
     
     // Pricing (owner adjustable, with defaults)
     var hourlyRate: Double // Default ₹40
+    var dailyRate: Double // Default ₹300
+    var monthlyRate: Double // Default ₹3000
     var flatFullBookingRate: Double? // Optional flat rate for full listing
     
     // Booking settings
