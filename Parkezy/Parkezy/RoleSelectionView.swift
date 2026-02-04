@@ -25,15 +25,21 @@ struct RoleSelectionView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Background Gradient
-                LinearGradient(
-                    colors: [
-                        DesignSystem.Colors.primary,
-                        DesignSystem.Colors.primary.opacity(0.7)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                // Background Image
+                GeometryReader { geometry in
+                    Image("parking_city_bg")
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                        .overlay(
+                            LinearGradient(
+                                colors: [.black.opacity(0.7), .black.opacity(0.2), .black.opacity(0.4)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
                 .ignoresSafeArea()
                 
                 VStack(spacing: DesignSystem.Spacing.xl) {
@@ -43,15 +49,18 @@ struct RoleSelectionView: View {
                         Image(systemName: "parkingsign.circle.fill")
                             .font(.system(size: 80))
                             .foregroundColor(.white)
-                            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 5)
+                            .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
                         
                         Text("ParkEzy")
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
+                            .shadow(color: .black.opacity(0.5), radius: 4, x: 0, y: 2)
                         
-                        Text("Your Smart Parking Solution")
+                        //Text("Your Smart Parking Solution")
                             .font(.title3)
-                            .foregroundColor(.white.opacity(0.9))
+                            .fontWeight(.medium)
+                            .foregroundColor(.white.opacity(0.95))
+                            .shadow(color: .black.opacity(0.5), radius: 2, x: 0, y: 1)
                     }
                     .padding(.top, DesignSystem.Spacing.xxl)
                     
@@ -311,14 +320,13 @@ struct RoleCard: View {
                 }
             }
             .padding(DesignSystem.Spacing.m)
-            .background(
+            .background(.ultraThinMaterial)
+            .cornerRadius(DesignSystem.Spacing.m)
+            .overlay(
                 RoundedRectangle(cornerRadius: DesignSystem.Spacing.m)
-                    .fill(isSelected ? Color.white.opacity(0.25) : Color.white.opacity(0.1))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: DesignSystem.Spacing.m)
-                            .stroke(Color.white.opacity(isSelected ? 0.5 : 0.2), lineWidth: 2)
-                    )
+                    .stroke(Color.white.opacity(isSelected ? 0.8 : 0.4), lineWidth: 1.5)
             )
+            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
         }
         .scaleEffect(isSelected ? 1.05 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
