@@ -24,7 +24,6 @@ struct PrivateListingDetailView: View {
     
     // Detect if this is the owner viewing their own listing
     private var isOwnerView: Bool {
-        // Check if listing is in the viewModel's myListings
         viewModel.myListings.contains { $0.id == listing.id }
     }
     
@@ -50,9 +49,18 @@ struct PrivateListingDetailView: View {
             }
         }
         .sheet(isPresented: $showEditSheet) {
-            // TODO: Create edit view
-            Text("Edit functionality coming soon")
-                .navigationTitle("Edit Listing")
+            NavigationStack {
+                Text("Edit functionality coming soon")
+                    .navigationTitle("Edit Listing")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Cancel") {
+                                showEditSheet = false
+                            }
+                        }
+                    }
+            }
         }
     }
     
@@ -71,13 +79,11 @@ struct PrivateListingDetailView: View {
                 // MARK: - Availability
                 availabilitySection
                 
-                // MARK: - Slot Selection (only for drivers)
-                if !isOwnerView {
-                    slotSelectionSection
-                }
+                // MARK: - Slot Selection
+                slotSelectionSection
                 
-                // MARK: - Booking Form (only for drivers)
-                if !isOwnerView && selectedSlot != nil {
+                // MARK: - Booking Form
+                if selectedSlot != nil {
                     bookingFormSection
                 }
                 

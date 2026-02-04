@@ -407,6 +407,15 @@ struct BookingTypeData: Identifiable {
     let color: Color
 }
 
+// MARK: - Time Range Enum
+
+/// Time range options for revenue chart filtering
+enum TimeRange {
+    case week
+    case month
+    case year
+}
+
 // MARK: - Scan Result Enum
 
 enum ScanResult {

@@ -20,7 +20,6 @@ struct LocationPickerView: View {
     @State private var searchText = ""
     @State private var markerPosition: CLLocationCoordinate2D?
     @State private var isSearching = false
-    
     var body: some View {
         NavigationStack {
             ZStack(alignment: .top) {

@@ -4,6 +4,7 @@
 //
 //  Unified dashboard for hosts with earnings, active parking, and add parking tile
 //
+//new dashbaord
 
 import SwiftUI
 
@@ -263,7 +264,12 @@ struct UnifiedHostDashboardView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: DesignSystem.Spacing.m) {
                         ForEach(viewModel.myListings) { listing in
-                            MyListingCard(listing: listing)
+                            NavigationLink {
+                                PrivateListingDetailView(listing: listing)
+                            } label: {
+                                MyListingCard(listing: listing)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

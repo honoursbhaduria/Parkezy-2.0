@@ -212,12 +212,8 @@ struct HostTypeSelectionView: View {
             }
         }
         .navigationDestination(isPresented: $navigateToDashboard) {
-            switch selectedHostType {
-            case .commercial:
-                HostDashboardView() // Can be replaced with CommercialHostDashboard later
-            case .privateParking:
-                PrivateHostDashboardView()
-            }
+            // Both types now use the unified dashboard with toggle
+            UnifiedHostDashboardView()
         }
         .navigationTitle("Host Type")
         .navigationBarTitleDisplayMode(.inline)
