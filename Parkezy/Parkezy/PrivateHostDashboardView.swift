@@ -131,7 +131,12 @@ struct PrivateHostDashboardView: View {
                 .font(.headline)
             
             ForEach(viewModel.myListings) { listing in
-                ListingManagementCard(listing: listing)
+                NavigationLink {
+                    PrivateListingDetailView(listing: listing)
+                } label: {
+                    ListingManagementCard(listing: listing)
+                }
+                .buttonStyle(.plain)
             }
         }
     }

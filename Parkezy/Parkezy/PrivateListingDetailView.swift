@@ -20,6 +20,13 @@ struct PrivateListingDetailView: View {
     @State private var isBooking = false
     @State private var bookingSuccess = false
     @State private var bookingRequestID: UUID?
+    @State private var showEditSheet = false
+    
+    // Detect if this is the owner viewing their own listing
+    private var isOwnerView: Bool {
+        // Check if listing is in the viewModel's myListings
+        viewModel.myListings.contains { $0.id == listing.id }
+    }
     
     var body: some View {
         Group {
@@ -29,8 +36,24 @@ struct PrivateListingDetailView: View {
                 listingContentView
             }
         }
-        .navigationTitle(bookingSuccess ? "Booking Confirmed" : "Listing Details")
+        .navigationTitle(bookingSuccess ? "Booking Confirmed" : (isOwnerView ? listing.title : "Listing Details"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isOwnerView && !bookingSuccess {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showEditSheet = true
+                    } label: {
+                        Text("Edit")
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            // TODO: Create edit view
+            Text("Edit functionality coming soon")
+                .navigationTitle("Edit Listing")
+        }
     }
     
     private var listingContentView: some View {
@@ -48,11 +71,13 @@ struct PrivateListingDetailView: View {
                 // MARK: - Availability
                 availabilitySection
                 
-                // MARK: - Slot Selection
-                slotSelectionSection
+                // MARK: - Slot Selection (only for drivers)
+                if !isOwnerView {
+                    slotSelectionSection
+                }
                 
-                // MARK: - Booking Form
-                if selectedSlot != nil {
+                // MARK: - Booking Form (only for drivers)
+                if !isOwnerView && selectedSlot != nil {
                     bookingFormSection
                 }
                 

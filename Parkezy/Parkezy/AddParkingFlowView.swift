@@ -1,4 +1,4 @@
-//
+    //
 //  AddParkingFlowView.swift
 //  ParkEzy
 //
@@ -37,6 +37,17 @@ enum AddParkingStep: Int, CaseIterable {
     }
 }
 
+// MARK: - Parking Mode
+
+enum ParkingMode: String, CaseIterable {
+    case private_ = "Private"  // Schedule-based parking with owner-defined availability
+    case commercial = "Commercial"  // Real-time parking with automatic tracking
+    
+    var displayName: String {
+        return self.rawValue
+    }
+}
+
 // MARK: - Main Flow View
 
 struct AddParkingFlowView: View {
@@ -59,20 +70,17 @@ struct AddParkingFlowView: View {
     
     // MARK: - Listing Details
     
+    @State private var parkingMode: ParkingMode = .private_  // Default to Private mode
     @State private var title: String = ""
     @State private var listingDescription: String = ""
     @State private var numberOfSlots: Int = 1
     @State private var hourlyRate: Double = 40
-    @State private var dailyRate: Double = 300
-    @State private var monthlyRate: Double = 3000
-    @State private var maxDuration: BookingDurationLimit = .unlimited
     
-    // MARK: - Availability Schedule
+    // MARK: - Availability Schedule (Private Mode Only)
     
-    @State private var is24x7: Bool = true
     @State private var availableStartTime: Date = Calendar.current.date(from: DateComponents(hour: 9, minute: 0)) ?? Date()
     @State private var availableEndTime: Date = Calendar.current.date(from: DateComponents(hour: 22, minute: 0)) ?? Date()
-    @State private var selectedDays: Set<Int> = Set(1...7) // All days selected
+    @State private var selectedDays: Set<Int> = Set(1...7) // All days selected by default
     
     // MARK: - Amenities
     
@@ -107,14 +115,11 @@ struct AddParkingFlowView: View {
                     .tag(AddParkingStep.media)
                     
                     DetailsStepView(
+                        parkingMode: $parkingMode,
                         title: $title,
                         listingDescription: $listingDescription,
                         numberOfSlots: $numberOfSlots,
                         hourlyRate: $hourlyRate,
-                        dailyRate: $dailyRate,
-                        monthlyRate: $monthlyRate,
-                        maxDuration: $maxDuration,
-                        is24x7: $is24x7,
                         availableStartTime: $availableStartTime,
                         availableEndTime: $availableEndTime,
                         selectedDays: $selectedDays,
@@ -125,15 +130,16 @@ struct AddParkingFlowView: View {
                     .tag(AddParkingStep.details)
                     
                     ReviewStepView(
+                        parkingMode: parkingMode,
                         address: selectedAddress,
                         photoCount: capturedPhotos.count,
                         hasVideo: hasRecordedVideo,
                         title: title,
                         slots: numberOfSlots,
                         hourlyRate: hourlyRate,
-                        is24x7: is24x7,
                         startTime: availableStartTime,
                         endTime: availableEndTime,
+                        selectedDays: selectedDays,
                         amenities: (isCovered, hasCCTV, hasEVCharging)
                     )
                     .tag(AddParkingStep.review)
@@ -147,7 +153,7 @@ struct AddParkingFlowView: View {
             .navigationTitle("Add Parking")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .topBarLeading) {
                     Button("Cancel") {
                         dismiss()
                     }
@@ -218,6 +224,7 @@ struct AddParkingFlowView: View {
                     .foregroundColor(.primary)
                     .cornerRadius(12)
                 }
+                .buttonStyle(.plain)
             }
             
             // Next/Submit Button
@@ -246,6 +253,7 @@ struct AddParkingFlowView: View {
                 .foregroundColor(.white)
                 .cornerRadius(12)
             }
+            .buttonStyle(.plain)
             .disabled(!canProceed || isSubmitting)
         }
         .padding(DesignSystem.Spacing.m)
@@ -261,7 +269,13 @@ struct AddParkingFlowView: View {
         case .media:
             return !capturedPhotos.isEmpty && hasRecordedVideo
         case .details:
-            return !title.isEmpty && numberOfSlots > 0 && hourlyRate > 0
+            // Private mode: Only need title and slots
+            // Commercial mode: Also need hourly rate
+            if parkingMode == .commercial {
+                return !title.isEmpty && numberOfSlots > 0 && hourlyRate > 0
+            } else {
+                return !title.isEmpty && numberOfSlots > 0
+            }
         case .review:
             return true
         }
@@ -308,26 +322,50 @@ struct AddParkingFlowView: View {
         // Convert images to data
         let photoData = capturedPhotos.compactMap { $0.jpegData(compressionQuality: 0.8) }
         
-        // Create the listing
-        viewModel.addListingWithFullDetails(
-            title: title,
-            address: selectedAddress,
-            coordinates: coordinates,
-            slots: numberOfSlots,
-            hourlyRate: hourlyRate,
-            dailyRate: dailyRate,
-            monthlyRate: monthlyRate,
-            maxDuration: maxDuration,
-            is24x7: is24x7,
-            availableStartTime: is24x7 ? nil : availableStartTime,
-            availableEndTime: is24x7 ? nil : availableEndTime,
-            availableDays: Array(selectedDays),
-            isCovered: isCovered,
-            hasCCTV: hasCCTV,
-            hasEVCharging: hasEVCharging,
-            photoData: photoData,
-            description: listingDescription
-        )
+        // Create the listing based on mode
+        if parkingMode == .private_ {
+            // Private mode: Schedule-based, no pricing in this version
+            viewModel.addListingWithFullDetails(
+                title: title,
+                address: selectedAddress,
+                coordinates: coordinates,
+                slots: numberOfSlots,
+                hourlyRate: 0,  // Not used in Private mode for MVP
+                dailyRate: 0,
+                monthlyRate: 0,
+                maxDuration: .unlimited,
+                is24x7: false,  // Private always uses schedule
+                availableStartTime: availableStartTime,
+                availableEndTime: availableEndTime,
+                availableDays: Array(selectedDays),
+                isCovered: isCovered,
+                hasCCTV: hasCCTV,
+                hasEVCharging: hasEVCharging,
+                photoData: photoData,
+                description: listingDescription
+            )
+        } else {
+            // Commercial mode: Real-time, hourly pricing only
+            viewModel.addListingWithFullDetails(
+                title: title,
+                address: selectedAddress,
+                coordinates: coordinates,
+                slots: numberOfSlots,
+                hourlyRate: hourlyRate,
+                dailyRate: 0,  // Not used in Commercial MVP
+                monthlyRate: 0, // Not used in Commercial MVP
+                maxDuration: .unlimited,
+                is24x7: true,  // Commercial is always real-time
+                availableStartTime: nil,
+                availableEndTime: nil,
+                availableDays: Array(1...7),  // Always available
+                isCovered: isCovered,
+                hasCCTV: hasCCTV,
+                hasEVCharging: hasEVCharging,
+                photoData: photoData,
+                description: listingDescription
+            )
+        }
         
         isSubmitting = false
         dismiss()
@@ -679,7 +717,7 @@ struct MediaStepView: View {
         
         // Simulate 10-second recording
         Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { timer in
-            videoProgress += 0.1
+            videoProgress += 3
             if videoProgress >= 10 {
                 timer.invalidate()
                 isRecordingVideo = false
@@ -692,14 +730,11 @@ struct MediaStepView: View {
 // MARK: - Step 3: Details & Schedule
 
 struct DetailsStepView: View {
+    @Binding var parkingMode: ParkingMode
     @Binding var title: String
     @Binding var listingDescription: String
     @Binding var numberOfSlots: Int
     @Binding var hourlyRate: Double
-    @Binding var dailyRate: Double
-    @Binding var monthlyRate: Double
-    @Binding var maxDuration: BookingDurationLimit
-    @Binding var is24x7: Bool
     @Binding var availableStartTime: Date
     @Binding var availableEndTime: Date
     @Binding var selectedDays: Set<Int>
@@ -711,6 +746,27 @@ struct DetailsStepView: View {
     
     var body: some View {
         Form {
+            // MARK: - Mode Selection
+            Section {
+                Picker("Parking Mode", selection: $parkingMode) {
+                    ForEach(ParkingMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                
+                // Mode description
+                if parkingMode == .private_ {
+                    Text("Schedule-based parking where you define when it's available")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    Text("Real-time parking with live availability tracking")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
             // Basic Info
             Section("Basic Information") {
                 TextField("Title (e.g., Spacious Driveway)", text: $title)
@@ -718,61 +774,66 @@ struct DetailsStepView: View {
                 TextField("Description (optional)", text: $listingDescription, axis: .vertical)
                     .lineLimit(3...5)
                 
-                Stepper(value: $numberOfSlots, in: 1...10) {
-                    HStack {
-                        Text("Parking Slots")
-                        Spacer()
-                        Text("\(numberOfSlots)")
-                            .fontWeight(.bold)
+                HStack {
+                    Text("Parking Slots")
+                    
+                    Spacer()
+                    
+                    // Minus button
+                    Button {
+                        if numberOfSlots > 1 {
+                            numberOfSlots -= 1
+                        }
+                    } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.title2)
+                            .foregroundColor(numberOfSlots > 1 ? DesignSystem.Colors.primary : .gray)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(numberOfSlots <= 1)
+                    
+                    // Editable number field
+                    TextField("1", value: $numberOfSlots, format: .number)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 60)
+                        .padding(.vertical, 6)
+                        .padding(.horizontal, 12)
+                        .background(Color(.secondarySystemBackground))
+                        .cornerRadius(8)
+                        .fontWeight(.bold)
+                        .foregroundColor(DesignSystem.Colors.primary)
+                    
+                    // Plus button
+                    Button {
+                        numberOfSlots += 1
+                    } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.title2)
                             .foregroundColor(DesignSystem.Colors.primary)
                     }
+                    .buttonStyle(.plain)
                 }
             }
             
-            // Pricing
-            Section("Pricing") {
-                HStack {
-                    Text("Hourly Rate")
-                    Spacer()
-                    Text("₹")
-                    TextField("40", value: $hourlyRate, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                }
-                
-                HStack {
-                    Text("Daily Rate")
-                    Spacer()
-                    Text("₹")
-                    TextField("300", value: $dailyRate, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                }
-                
-                HStack {
-                    Text("Monthly Rate")
-                    Spacer()
-                    Text("₹")
-                    TextField("3000", value: $monthlyRate, format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 80)
-                }
-                
-                Picker("Max Booking Duration", selection: $maxDuration) {
-                    ForEach(BookingDurationLimit.allCases, id: \.self) { limit in
-                        Text(limit.rawValue).tag(limit)
+            // Pricing (Hourly rate only - Commercial mode)
+            if parkingMode == .commercial {
+                Section("Pricing") {
+                    HStack {
+                        Text("Hourly Rate")
+                        Spacer()
+                        Text("₹")
+                        TextField("40", value: $hourlyRate, format: .number)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
                     }
                 }
             }
             
-            // Availability Schedule
-            Section("Availability") {
-                Toggle("Available 24/7", isOn: $is24x7)
-                
-                if !is24x7 {
+            // Availability Schedule (Private mode only)
+            if parkingMode == .private_ {
+                Section("Availability Schedule") {
                     DatePicker("Start Time", selection: $availableStartTime, displayedComponents: .hourAndMinute)
                     
                     DatePicker("End Time", selection: $availableEndTime, displayedComponents: .hourAndMinute)
@@ -784,6 +845,7 @@ struct DetailsStepView: View {
                         HStack(spacing: 8) {
                             ForEach(1...7, id: \.self) { day in
                                 Button {
+                                    // Fixed: Each day toggles independently
                                     if selectedDays.contains(day) {
                                         selectedDays.remove(day)
                                     } else {
@@ -797,6 +859,7 @@ struct DetailsStepView: View {
                                         .foregroundColor(selectedDays.contains(day) ? .white : .primary)
                                         .clipShape(Circle())
                                 }
+                                .buttonStyle(.plain)  // Prevent default button behavior
                             }
                         }
                     }
@@ -816,15 +879,16 @@ struct DetailsStepView: View {
 // MARK: - Step 4: Review
 
 struct ReviewStepView: View {
+    let parkingMode: ParkingMode
     let address: String
     let photoCount: Int
     let hasVideo: Bool
     let title: String
     let slots: Int
     let hourlyRate: Double
-    let is24x7: Bool
     let startTime: Date
     let endTime: Date
+    let selectedDays: Set<Int>
     let amenities: (covered: Bool, cctv: Bool, ev: Bool)
     
     private let timeFormatter: DateFormatter = {
@@ -849,6 +913,8 @@ struct ReviewStepView: View {
                 
                 // Summary Cards
                 VStack(spacing: DesignSystem.Spacing.m) {
+                    ReviewCard(icon: "building.2.fill", title: "Mode", value: parkingMode.displayName)
+                    
                     ReviewCard(icon: "mappin.circle.fill", title: "Location", value: address)
                     
                     ReviewCard(icon: "camera.fill", title: "Media", value: "\(photoCount) photos, \(hasVideo ? "1 video" : "No video")")
@@ -857,13 +923,28 @@ struct ReviewStepView: View {
                     
                     ReviewCard(icon: "car.fill", title: "Slots", value: "\(slots) parking slot\(slots > 1 ? "s" : "")")
                     
-                    ReviewCard(icon: "indianrupeesign.circle.fill", title: "Hourly Rate", value: "₹\(Int(hourlyRate))/hour")
+                    // Show pricing only for Commercial mode
+                    if parkingMode == .commercial {
+                        ReviewCard(icon: "indianrupeesign.circle.fill", title: "Hourly Rate", value: "₹\(Int(hourlyRate))/hour")
+                    }
                     
-                    ReviewCard(
-                        icon: "clock.fill",
-                        title: "Availability",
-                        value: is24x7 ? "24/7" : "\(timeFormatter.string(from: startTime)) - \(timeFormatter.string(from: endTime))"
-                    )
+                    // Show availability only for Private mode
+                    if parkingMode == .private_ {
+                        let dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+                        let selectedDayNames = selectedDays.sorted().map { dayNames[$0 - 1] }.joined(separator: ", ")
+                        
+                        ReviewCard(
+                            icon: "clock.fill",
+                            title: "Availability",
+                            value: "\(timeFormatter.string(from: startTime)) - \(timeFormatter.string(from: endTime))"
+                        )
+                        
+                        ReviewCard(
+                            icon: "calendar",
+                            title: "Days",
+                            value: selectedDayNames.isEmpty ? "No days selected" : selectedDayNames
+                        )
+                    }
                     
                     // Amenities
                     HStack(spacing: DesignSystem.Spacing.m) {
